@@ -8,7 +8,7 @@ max_midi: 108
 learning_rate: 1e-5
 epochs: 5
 download: False
-data_root: '../../MusicDataset'
+data_root: './'
 
 dataset:
     train:
@@ -26,7 +26,7 @@ dataset:
     val:
         root: ${data_root} 
         groups: 'validation'            
-        download: ${download}
+        download: False
         preload: False
         sequence_length: ${sequence_length}
         seed: 42
@@ -39,7 +39,7 @@ dataset:
     test:
         root: ${data_root} 
         groups: 'test'            
-        download: ${download}
+        download: False
         preload: False
         sequence_length: ${sequence_length}
         seed: 42
