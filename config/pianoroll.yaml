@@ -1,11 +1,12 @@
 gpus: 1
+check_val_every_n_epoch: 1
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 min_midi: 21
 max_midi: 108
 learning_rate: 1e-5
-epochs: 1000
+epochs: 5
 download: False
 data_root: '../../MusicDataset'
 
@@ -64,12 +65,22 @@ dataloader:
         num_workers: 8
         shuffle: False
         pin_memory: True
-
+        
+model:
+    dim: 28
+    channels: 1
+        
+trainer:
+    gpus: ${gpus}
+    max_epochs: ${epochs}
+    check_val_every_n_epoch: 1
+    
 pl:
     lr: ${learning_rate}
     sr: ${sampling_rate}
     hop_length: ${hop_length}
     min_midi: ${min_midi}
+    timesteps: 200
 
 # defaults:    
 #     - spec_layer: Mel

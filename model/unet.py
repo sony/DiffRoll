@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from inspect import isfunction
 from functools import partial
 import math
+from task.diffusion import RollDiffusion
 
 def exists(x):
     return x is not None
@@ -183,9 +184,10 @@ class LinearAttention(nn.Module):
         out = rearrange(out, "b h c (x y) -> b (h c) x y", h=self.heads, x=h, y=w)
         return self.to_out(out)    
 
-class Unet(nn.Module):
+class Unet(RollDiffusion):
     def __init__(
         self,
+        task_args,
         dim,
         init_dim=None,
         out_dim=None,
@@ -196,7 +198,7 @@ class Unet(nn.Module):
         use_convnext=True,
         convnext_mult=2,
     ):
-        super().__init__()
+        super().__init__(**task_args)
 
         # determine dimensions
         self.channels = channels
