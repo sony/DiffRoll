@@ -1,0 +1,13 @@
+tqdm==4.64.0
+hydra-core==1.2.0
+einops==0.4.1
+pytorch_lightning==1.6.4
+matplotlib==3.5.2
+joblib==1.1.0
+mido==1.2.10
+pydub==0.25.1
+git+https://github.com/KinWaiCheuk/AudioLoader.git
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch==1.11.0+cu113
+torchvision==0.12.0+cu113
+torchaudio==0.11.0+cu113
