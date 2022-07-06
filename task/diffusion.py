@@ -61,6 +61,7 @@ class RollDiffusion(pl.LightningModule):
         self.timesteps = timesteps
         
         # define beta schedule
+        # beta is variance
         self.betas = linear_beta_schedule(timesteps=timesteps)
 
         # define alphas 
@@ -75,27 +76,6 @@ class RollDiffusion(pl.LightningModule):
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
-        
-    def p_sample(self, x, t, t_index):
-        betas_t = extract(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x.shape
-        )
-        sqrt_recip_alphas_t = extract(self.sqrt_recip_alphas, t, x.shape)
-
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self(x, t) / sqrt_one_minus_alphas_cumprod_t
-        )
-
-        if t_index == 0:
-            return model_mean
-        else:
-            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
-            noise = torch.randn_like(x)
-            # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise         
 
     def training_step(self, batch, batch_idx):
         batch_size = batch["frame"].shape[0]
@@ -117,7 +97,8 @@ class RollDiffusion(pl.LightningModule):
         t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
 
         loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type="huber")
-        self.log("Val/loss", loss)       
+        self.log("Val/loss", loss)
+        
     
     def p_losses(self, x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None, loss_type="l1"):
         if noise is None:
@@ -136,6 +117,29 @@ class RollDiffusion(pl.LightningModule):
             raise NotImplementedError()
 
         return loss
+    
+    def p_sample(self, x, t, t_index):
+        # x is Guassian noise
+        
+        betas_t = extract(self.betas, t, x.shape)
+        sqrt_one_minus_alphas_cumprod_t = extract(
+            self.sqrt_one_minus_alphas_cumprod, t, x.shape
+        )
+        sqrt_recip_alphas_t = extract(self.sqrt_recip_alphas, t, x.shape)
+
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean
+        model_mean = sqrt_recip_alphas_t * (
+            x - betas_t * self(x, t) / sqrt_one_minus_alphas_cumprod_t
+        )
+
+        if t_index == 0:
+            return model_mean
+        else:
+            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            noise = torch.randn_like(x)
+            # Algorithm 2 line 4:
+            return model_mean + torch.sqrt(posterior_variance_t) * noise             
     
     def predict_step(self, batch, batch_idx):
         # inference code
@@ -169,6 +173,7 @@ class RollDiffusion(pl.LightningModule):
                     # if global step starts from self.timesteps
                 
             imgs.append(img_npy)
+        torch.save(imgs, 'imgs.pt')   
  
     def configure_optimizers(self):
 

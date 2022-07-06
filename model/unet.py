@@ -199,9 +199,7 @@ class Unet(RollDiffusion):
         convnext_mult=2,
     ):
         super().__init__(**task_args)
-
-        # determine dimensions
-        self.channels = channels
+        self.save_hyperparameters()
 
         init_dim = default(init_dim, dim // 3 * 2)
         self.init_conv = nn.Conv2d(channels, init_dim, 7, padding=3)
@@ -269,6 +267,8 @@ class Unet(RollDiffusion):
         self.final_conv = nn.Sequential(
             block_klass(dim, dim), nn.Conv2d(dim, out_dim, 1)
         )
+        
+
 
     def forward(self, x, time):
         # x = (B, 1, dim, dim)       

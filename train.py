@@ -57,11 +57,12 @@ def main(cfg):
     checkpoint_callback = ModelCheckpoint(monitor="Train/loss",
                                           filename="{epoch:02d}e-Loss_{Train/loss:.2f}",
                                           save_top_k=2,
+                                          save_last=True,
                                           mode="min",
                                           auto_insert_metric_name=False)    
     
     name = f"diffusion_dim={cfg.model.dim}-" \
-           f"channels={cfg.model.channels}-MAESTRO'"
+           f"channels={cfg.model.channels}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
