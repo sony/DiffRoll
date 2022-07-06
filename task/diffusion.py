@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 def linear_beta_schedule(timesteps):
     beta_start = 0.0001
@@ -35,6 +36,13 @@ def extract(a, t, x_shape):
     return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
 
 
+
+
+# Algorithm 2 (including returning all images)
+def sample(model, image_size, batch_size=16, channels=3):
+    return p_sample_loop(model, shape=(batch_size, channels, *image_size))
+
+
 class RollDiffusion(pl.LightningModule):
     def __init__(self,
                  lr,
@@ -53,20 +61,41 @@ class RollDiffusion(pl.LightningModule):
         self.timesteps = timesteps
         
         # define beta schedule
-        betas = linear_beta_schedule(timesteps=timesteps)
+        self.betas = linear_beta_schedule(timesteps=timesteps)
 
         # define alphas 
-        alphas = 1. - betas
+        alphas = 1. - self.betas
         alphas_cumprod = torch.cumprod(alphas, axis=0)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
-        sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
+        self.sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
 
         # calculations for diffusion q(x_t | x_{t-1}) and others
         self.sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
-        posterior_variance = betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)        
+        self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
+        
+    def p_sample(self, x, t, t_index):
+        betas_t = extract(self.betas, t, x.shape)
+        sqrt_one_minus_alphas_cumprod_t = extract(
+            self.sqrt_one_minus_alphas_cumprod, t, x.shape
+        )
+        sqrt_recip_alphas_t = extract(self.sqrt_recip_alphas, t, x.shape)
+
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean
+        model_mean = sqrt_recip_alphas_t * (
+            x - betas_t * self(x, t) / sqrt_one_minus_alphas_cumprod_t
+        )
+
+        if t_index == 0:
+            return model_mean
+        else:
+            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            noise = torch.randn_like(x)
+            # Algorithm 2 line 4:
+            return model_mean + torch.sqrt(posterior_variance_t) * noise         
 
     def training_step(self, batch, batch_idx):
         batch_size = batch["frame"].shape[0]
@@ -96,9 +125,30 @@ class RollDiffusion(pl.LightningModule):
         else:
             raise NotImplementedError()
 
-        return loss    
+        return loss
+    
+    
+    def predict_step(self, batch, batch_idx):
+        # inference code
+        # Unwrapping TensorDataset (list)
+        # It is a pure noise
+        img = batch[0]
+        b = img.shape[0] # extracting batchsize
+        device=img.device
+        imgs = []
+        for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
+            img = self.p_sample(
+                           img,
+                           torch.full(
+                               (b,),
+                               i,
+                               device=device,
+                               dtype=torch.long),
+                           i)
+                
+            imgs.append(img.cpu().numpy())
 
-
+        torch.save(imgs, 'imgs.pt')   
     def configure_optimizers(self):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)

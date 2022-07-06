@@ -29,10 +29,21 @@ def main(cfg):
     train_set = MAESTRO(**cfg.dataset.train)
     val_set = MAESTRO(**cfg.dataset.val)
     test_set = MAESTRO(**cfg.dataset.test)
-
+    
+    infer_samples = 8
+    infer_set = torch.utils.data.TensorDataset(
+        torch.randn(
+            (infer_samples,
+             cfg.model.channels,
+             *train_set[0]['frame'].shape
+            )
+        )
+    )
+        
     train_loader = DataLoader(train_set, batch_size=4, num_workers=16)
     val_loader = DataLoader(val_set, batch_size=4)
     test_loader = DataLoader(test_set, batch_size=4)
+    infer_loader =  DataLoader(infer_set, batch_size=infer_samples)
 
     # Model
     model = Unet(
@@ -58,28 +69,7 @@ def main(cfg):
                          logger=logger)
     
     trainer.fit(model, train_loader)
-
-
-    
-    # inference code
-    # sample 64 images
-    samples = sample(model, image_size=(312,88), batch_size=64, channels=1)
-
-    import matplotlib.pyplot as plt 
-
-    samples[-1].shape
-
-    batch.shape
-
-    samples[-1].shape
-
-    # show a random one
-    random_index = 5
-    plt.imshow(samples[-1][random_index].squeeze(0).transpose(), aspect='auto')
-
-    # show a random one
-    random_index = 0
-    plt.imshow(samples[-1][random_index].squeeze(0).transpose(), aspect='auto')
+    trainer.predict(model, infer_loader)
     
 if __name__ == "__main__":
     main()
