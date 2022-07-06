@@ -55,7 +55,7 @@ def main(cfg):
     optimizer = Adam(model.parameters(), lr=1e-3)
     
     checkpoint_callback = ModelCheckpoint(monitor="Train/loss",
-                                          filename="{epoch:02d}-{Train/loss:.2f}",
+                                          filename="{epoch:02d}e-Loss_{Train/loss:.2f}",
                                           save_top_k=2,
                                           mode="min",
                                           auto_insert_metric_name=False)    
@@ -68,7 +68,7 @@ def main(cfg):
                          callbacks=[checkpoint_callback,],
                          logger=logger)
     
-    trainer.fit(model, train_loader)
+    trainer.fit(model, train_loader, val_loader)
     trainer.predict(model, infer_loader)
     
 if __name__ == "__main__":

@@ -109,6 +109,16 @@ class RollDiffusion(pl.LightningModule):
       
         return loss
     
+    def validation_step(self, batch, batch_idx):
+        batch_size = batch["frame"].shape[0]
+        batch = batch["frame"].unsqueeze(1)  
+        device = batch.device
+        # Algorithm 1 line 3: sample t uniformally for every example in the batch
+        t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
+
+        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type="huber")
+        self.log("Val/loss", loss)       
+    
     def p_losses(self, x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None, loss_type="l1"):
         if noise is None:
             noise = torch.randn_like(x_start)

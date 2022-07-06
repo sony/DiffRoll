@@ -1,5 +1,5 @@
 gpus: 1
-check_val_every_n_epoch: 1
+val_freq: 5
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
@@ -73,7 +73,7 @@ model:
 trainer:
     gpus: ${gpus}
     max_epochs: ${epochs}
-    check_val_every_n_epoch: 1
+    check_val_every_n_epoch: ${val_freq}
     
 pl:
     lr: ${learning_rate}
