@@ -127,7 +127,6 @@ class RollDiffusion(pl.LightningModule):
 
         return loss
     
-    
     def predict_step(self, batch, batch_idx):
         # inference code
         # Unwrapping TensorDataset (list)
@@ -145,10 +144,22 @@ class RollDiffusion(pl.LightningModule):
                                device=device,
                                dtype=torch.long),
                            i)
+            img_npy = img.cpu().numpy()
+            
+            if (i+1)%10==0:
+                for idx, j in enumerate(img_npy):
+                    # j (1, T, F)
+                    fig, ax = plt.subplots(1,1)
+                    ax.imshow(j[0].T, aspect='auto', origin='lower')
+                    self.logger.experiment.add_figure(
+                        f"sample_{idx}",
+                        fig,
+                        global_step=self.timesteps-i) 
+                    # self.timesteps-i is used because slide bar won't show
+                    # if global step starts from self.timesteps
                 
-            imgs.append(img.cpu().numpy())
-
-        torch.save(imgs, 'imgs.pt')   
+            imgs.append(img_npy)
+ 
     def configure_optimizers(self):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
