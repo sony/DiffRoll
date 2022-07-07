@@ -40,10 +40,10 @@ def main(cfg):
     infer_loader =  DataLoader(infer_set, batch_size=infer_samples)
 
     # Model
-    model = Unet(
-        cfg.pl,        
+    model = Unet(     
         **cfg.model,
-        dim_mults=(1, 2, 4,)
+        dim_mults=(1, 2, 4,),
+        **cfg.task,
     )
 
     optimizer = Adam(model.parameters(), lr=1e-3)
@@ -56,7 +56,9 @@ def main(cfg):
                                           auto_insert_metric_name=False)    
     
     name = f"diffusion_dim={cfg.model.dim}-" \
-           f"channels={cfg.model.channels}-MAESTRO"
+           f"channels={cfg.model.channels}-" \
+           f"{model.hparams.loss_type}-" \
+           f"MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,

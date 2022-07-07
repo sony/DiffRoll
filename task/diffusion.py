@@ -46,19 +46,12 @@ def sample(model, image_size, batch_size=16, channels=3):
 class RollDiffusion(pl.LightningModule):
     def __init__(self,
                  lr,
-                 sr,
-                 hop_length,
-                 min_midi,
                  timesteps,
-                 
+                 loss_type
                 ):
         super().__init__()
-
-        self.lr = lr
-        self.sr = sr
-        self.hop_length = hop_length
-        self.min_midi = min_midi
-        self.timesteps = timesteps
+        
+        self.save_hyperparameters()
         
         # define beta schedule
         # beta is variance
@@ -82,9 +75,9 @@ class RollDiffusion(pl.LightningModule):
         batch = batch["frame"].unsqueeze(1)  
         device = batch.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
-        t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
+        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
 
-        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type="huber")
+        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
         self.log("Train/loss", loss)            
       
         return loss
@@ -94,9 +87,9 @@ class RollDiffusion(pl.LightningModule):
         batch = batch["frame"].unsqueeze(1)  
         device = batch.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
-        t = torch.randint(0, self.timesteps, (batch_size,), device=device).long()
+        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
 
-        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type="huber")
+        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
         self.log("Val/loss", loss)
         
     
@@ -149,7 +142,7 @@ class RollDiffusion(pl.LightningModule):
         b = img.shape[0] # extracting batchsize
         device=img.device
         imgs = []
-        for i in tqdm(reversed(range(0, self.timesteps)), desc='sampling loop time step', total=self.timesteps):
+        for i in tqdm(reversed(range(0, self.hparams.timesteps)), desc='sampling loop time step', total=self.hparams.timesteps):
             img = self.p_sample(
                            img,
                            torch.full(
@@ -168,18 +161,18 @@ class RollDiffusion(pl.LightningModule):
                     self.logger.experiment.add_figure(
                         f"sample_{idx}",
                         fig,
-                        global_step=self.timesteps-i) 
-                    # self.timesteps-i is used because slide bar won't show
-                    # if global step starts from self.timesteps
+                        global_step=self.hparams.timesteps-i) 
+                    # self.hparams.timesteps-i is used because slide bar won't show
+                    # if global step starts from self.hparams.timesteps
                 
             imgs.append(img_npy)
         torch.save(imgs, 'imgs.pt')   
  
     def configure_optimizers(self):
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 #         scheduler = TriStageLRSchedule(optimizer,
-#                                        [1e-8, self.lr, 1e-8],
+#                                        [1e-8, self.hparams.lr, 1e-8],
 #                                        [0.2,0.6,0.2],
 #                                        max_update=len(self.train_dataloader.dataloader)*self.trainer.max_epochs)   
 #         scheduler = MultiStepLR(optimizer, [1,3,5,7,9], gamma=0.1, last_epoch=-1, verbose=False)

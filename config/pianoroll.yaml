@@ -75,12 +75,10 @@ trainer:
     max_epochs: ${epochs}
     check_val_every_n_epoch: ${val_freq}
     
-pl:
+task:
     lr: ${learning_rate}
-    sr: ${sampling_rate}
-    hop_length: ${hop_length}
-    min_midi: ${min_midi}
     timesteps: 200
+    loss_type: 'huber'
 
 # defaults:    
 #     - spec_layer: Mel

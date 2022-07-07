@@ -187,7 +187,6 @@ class LinearAttention(nn.Module):
 class Unet(RollDiffusion):
     def __init__(
         self,
-        task_args,
         dim,
         init_dim=None,
         out_dim=None,
@@ -197,9 +196,9 @@ class Unet(RollDiffusion):
         resnet_block_groups=8,
         use_convnext=True,
         convnext_mult=2,
+        **kwargs
     ):
-        super().__init__(**task_args)
-        self.save_hyperparameters()
+        super().__init__(**kwargs)
 
         init_dim = default(init_dim, dim // 3 * 2)
         self.init_conv = nn.Conv2d(channels, init_dim, 7, padding=3)
