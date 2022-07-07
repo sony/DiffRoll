@@ -16,12 +16,6 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from AudioLoader.music.amt import MAPS, MAESTRO
 
-
-
-
-# forward diffusion (using the nice property)
-
-
 @hydra.main(config_path="config", config_name="pianoroll")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)

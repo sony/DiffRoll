@@ -1,0 +1,8 @@
+gpus: 1
+checkpoint_path: './outputs/2022-07-07/08-36-53/diffusion_dim=28-channels=1-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+shape:
+- 640
+- 88
+        
+trainer:
+    gpus: ${gpus}
