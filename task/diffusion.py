@@ -92,6 +92,50 @@ class RollDiffusion(pl.LightningModule):
         loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
         self.log("Val/loss", loss)
         
+    def test_step(self, batch, batch_idx):
+        batch_size = batch["frame"].shape[0]
+        batch = batch["frame"].unsqueeze(1)
+        device = batch.device
+        
+        
+        # Algorithm 1 line 3: sample t uniformally for every example in the batch
+        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
+
+        loss = self.p_losses(batch, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
+        self.log("Test/loss", loss)        
+        
+    def predict_step(self, batch, batch_idx):
+        # inference code
+        # Unwrapping TensorDataset (list)
+        # It is a pure noise
+        img = batch[0]
+        b = img.shape[0] # extracting batchsize
+        device=img.device
+        imgs = []
+        for i in tqdm(reversed(range(0, self.hparams.timesteps)), desc='sampling loop time step', total=self.hparams.timesteps):
+            img = self.p_sample(
+                           img,
+                           torch.full(
+                               (b,),
+                               i,
+                               device=device,
+                               dtype=torch.long),
+                           i)
+            img_npy = img.cpu().numpy()
+            
+            if (i+1)%10==0:
+                for idx, j in enumerate(img_npy):
+                    # j (1, T, F)
+                    fig, ax = plt.subplots(1,1)
+                    ax.imshow(j[0].T, aspect='auto', origin='lower')
+                    self.logger.experiment.add_figure(
+                        f"sample_{idx}",
+                        fig,
+                        global_step=self.hparams.timesteps-i)
+                    # self.hparams.timesteps-i is used because slide bar won't show
+                    # if global step starts from self.hparams.timesteps
+            imgs.append(img_npy)
+        torch.save(imgs, 'imgs.pt')
     
     def p_losses(self, x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None, loss_type="l1"):
         if noise is None:
@@ -133,40 +177,6 @@ class RollDiffusion(pl.LightningModule):
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
             return model_mean + torch.sqrt(posterior_variance_t) * noise             
-    
-    def predict_step(self, batch, batch_idx):
-        # inference code
-        # Unwrapping TensorDataset (list)
-        # It is a pure noise
-        img = batch[0]
-        b = img.shape[0] # extracting batchsize
-        device=img.device
-        imgs = []
-        for i in tqdm(reversed(range(0, self.hparams.timesteps)), desc='sampling loop time step', total=self.hparams.timesteps):
-            img = self.p_sample(
-                           img,
-                           torch.full(
-                               (b,),
-                               i,
-                               device=device,
-                               dtype=torch.long),
-                           i)
-            img_npy = img.cpu().numpy()
-            
-            if (i+1)%10==0:
-                for idx, j in enumerate(img_npy):
-                    # j (1, T, F)
-                    fig, ax = plt.subplots(1,1)
-                    ax.imshow(j[0].T, aspect='auto', origin='lower')
-                    self.logger.experiment.add_figure(
-                        f"sample_{idx}",
-                        fig,
-                        global_step=self.hparams.timesteps-i) 
-                    # self.hparams.timesteps-i is used because slide bar won't show
-                    # if global step starts from self.hparams.timesteps
-                
-            imgs.append(img_npy)
-        torch.save(imgs, 'imgs.pt')   
  
     def configure_optimizers(self):
 

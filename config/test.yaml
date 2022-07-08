@@ -1,0 +1,30 @@
+gpus: 1
+hop_length: 512
+sequence_length: 327680
+sampling_rate: 16000
+data_root: './'
+checkpoint_path: './outputs/2022-07-07/13-46-15/diffusion_dim=28-channels=1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+
+dataset:
+    test:
+        root: ${data_root} 
+        groups: 'test'            
+        download: False
+        preload: False
+        sequence_length: ${sequence_length}
+        seed: 42
+        hop_length: ${hop_length}
+        max_midi: 108
+        min_midi: 21
+        ext_audio: '.wav'
+        sampling_rate: 16000
+        
+dataloader:
+    test:
+        batch_size: 16
+        num_workers: 8
+        shuffle: False
+        pin_memory: True
+        
+trainer:
+    gpus: ${gpus}

@@ -6,7 +6,7 @@ sampling_rate: 16000
 min_midi: 21
 max_midi: 108
 learning_rate: 1e-5
-epochs: 5
+epochs: 200
 download: False
 data_root: './'
 
