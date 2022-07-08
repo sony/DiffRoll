@@ -1,3 +1,6 @@
 __pycache__
 .ipynb_checkpoints
 *.pyc
+*.ipynb
+outputs
+maestro-v2.0.0
