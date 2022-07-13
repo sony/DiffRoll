@@ -66,9 +66,6 @@ dataloader:
         shuffle: False
         pin_memory: True
         
-model:
-    dim: 28
-    channels: 1
         
 trainer:
     gpus: ${gpus}
@@ -82,4 +79,4 @@ task:
 
 defaults:
     - spec: mel
-#     - model: CNN_LSTM
+    - model: SpecUnet

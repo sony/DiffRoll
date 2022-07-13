@@ -12,6 +12,7 @@ from torch.optim import Adam
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+import model.unet as Model
 
 from AudioLoader.music.amt import MAPS, MAESTRO
 
@@ -30,12 +31,12 @@ def main(cfg):
     infer_loader =  DataLoader(infer_set, batch_size=infer_samples)
 
     # Model
-    model = Unet.load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
+    # model = Unet.load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
 
-      
+    model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
-    name = f"Infer-diffusion_dim={model.hparams.dim}-" \
-           f"channels={model.hparams.channels}-MAESTRO'"
+    name = f"Infer-{cfg.model.name}-" \
+           f"MAESTRO'"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
