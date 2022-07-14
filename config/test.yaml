@@ -3,7 +3,7 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './'
-checkpoint_path: './outputs/2022-07-07/13-46-15/diffusion_dim=28-channels=1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-07-07/13-59-48/diffusion_dim=28-channels=1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 dataset:
     test:
@@ -28,3 +28,6 @@ dataloader:
         
 trainer:
     gpus: ${gpus}
+    
+defaults:
+    - model: Unet    

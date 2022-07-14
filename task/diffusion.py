@@ -13,9 +13,6 @@ def linear_beta_schedule(timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
 
 def q_sample(x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None):
-    if noise is None:
-        noise = torch.randn_like(x_start)
-
     # sqrt_alphas is mean of the Gaussian N()    
     sqrt_alphas_cumprod_t = extract(sqrt_alphas_cumprod, t, x_start.shape) # extract the value of \bar{\alpha} at time=t
     # sqrt_alphas is variance of the Gaussian N()
@@ -249,90 +246,68 @@ class SpecRollDiffusion(pl.LightningModule):
         
     def test_step(self, batch, batch_idx):
         batch_size = batch["frame"].shape[0]
-        batch = batch["audio"].unsqueeze(1)
+        roll = batch["frame"].unsqueeze(1)
+        waveform = batch["audio"]
         device = roll.device
-        
-        
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
         t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
 
-        loss = self.p_losses(roll, waveform, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
-        self.log("Test/loss", loss)        
+        noise = torch.randn_like(roll) # creating label noise
+
+        x_noisy = q_sample( # sampling noise at time t
+            x_start=roll,
+            t=t,
+            sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
+            sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
+            noise=noise)
         
-    def predict_step(self, batch, batch_idx):
-        # inference code
-        # Unwrapping TensorDataset (list)
-        # It is a pure noise
-        img = batch[0]
-        b = img.shape[0] # extracting batchsize
-        device=img.device
-        imgs = []
-        for i in tqdm(reversed(range(0, self.hparams.timesteps)), desc='sampling loop time step', total=self.hparams.timesteps):
-            img = self.p_sample(
-                           img,
-                           torch.full(
-                               (b,),
-                               i,
-                               device=device,
-                               dtype=torch.long),
-                           i)
-            img_npy = img.cpu().numpy()
-            
-            if (i+1)%10==0:
-                for idx, j in enumerate(img_npy):
-                    # j (1, T, F)
-                    fig, ax = plt.subplots(1,1)
-                    ax.imshow(j[0].T, aspect='auto', origin='lower')
-                    self.logger.experiment.add_figure(
-                        f"sample_{idx}",
-                        fig,
-                        global_step=self.hparams.timesteps-i)
-                    # self.hparams.timesteps-i is used because slide bar won't show
-                    # if global step starts from self.hparams.timesteps
-            imgs.append(img_npy)
-        torch.save(imgs, 'imgs.pt')
+        predicted_noise = self(x_noisy, waveform, t) # predict the noise at previous step (t-1)
+        diffusion_loss = self.p_losses(loss_type=self.hparams.loss_type)
+        self.log("Test/loss", loss)
+        
+        fig_roll_pred, ax_roll_pred = plt.subplots(2,2)
+        fig_roll_label, ax_roll_label = plt.subplots(2,2)
+        
+        if batch_idx==0:
+            for idx in range(4): # visualize only 4 piano rolls
+                # roll_pred (1, T, F)
+                ax_roll_pred.flatten()[idx].imshow(roll_pred[idx][0].cpu())
+            self.logger.experiment.add_figure(
+                f"prediction_{idx}",
+                fig_roll_pred)        
+        
     
-    def p_losses(self, x_start, waveform, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None, loss_type="l1"):
-        if noise is None:
-            noise = torch.randn_like(x_start)
+#     def p_losses(self, x_start, waveform, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None, loss_type="l1"):
+#         if noise is None:
+#             noise = torch.randn_like(x_start)
 
-        x_noisy = q_sample(x_start=x_start, t=t, sqrt_alphas_cumprod=sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod=sqrt_one_minus_alphas_cumprod, noise=noise)
-        predicted_noise = self(x_noisy, waveform, t)
+#         x_noisy = q_sample(x_start=x_start, t=t, sqrt_alphas_cumprod=sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod=sqrt_one_minus_alphas_cumprod, noise=noise)
+#         predicted_noise = self(x_noisy, waveform, t)
 
+#         if loss_type == 'l1':
+#             loss = F.l1_loss(noise, predicted_noise)
+#         elif loss_type == 'l2':
+#             loss = F.mse_loss(noise, predicted_noise)
+#         elif loss_type == "huber":
+#             loss = F.smooth_l1_loss(noise, predicted_noise)
+#         else:
+#             raise NotImplementedError()
+
+#         return loss, predicted_noise
+
+    def p_losses(self, label, prediction, loss_type="l1"):
         if loss_type == 'l1':
-            loss = F.l1_loss(noise, predicted_noise)
+            loss = F.l1_loss(label, prediction)
         elif loss_type == 'l2':
-            loss = F.mse_loss(noise, predicted_noise)
+            loss = F.mse_loss(label, prediction)
         elif loss_type == "huber":
-            loss = F.smooth_l1_loss(noise, predicted_noise)
+            loss = F.smooth_l1_loss(label, prediction)
         else:
             raise NotImplementedError()
 
-        return loss
+        return loss, predicted_noise
     
-    def p_sample(self, x, t, t_index):
-        # x is Guassian noise
-        
-        betas_t = extract(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x.shape
-        )
-        sqrt_recip_alphas_t = extract(self.sqrt_recip_alphas, t, x.shape)
 
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
-        model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self(x, t) / sqrt_one_minus_alphas_cumprod_t
-        )
-
-        if t_index == 0:
-            return model_mean
-        else:
-            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
-            noise = torch.randn_like(x)
-            # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise             
- 
     def configure_optimizers(self):
 
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)

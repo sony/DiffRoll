@@ -13,6 +13,7 @@ from torch.optim import Adam
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+import model.unet as Model
 
 from AudioLoader.music.amt import MAPS, MAESTRO
 
@@ -25,11 +26,9 @@ def main(cfg):
     test_loader = DataLoader(test_set, batch_size=4)
 
     # Model
-    model = Unet.load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
+    model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
-    name = f"Test-" \
-           f"channels={model.hparams.channels}-" \
-           f"{model.hparams.loss_type}-" \
+    name = f"Test-{cfg.model.name}-" \
            f"MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
