@@ -244,29 +244,26 @@ class SpecRollDiffusion(pl.LightningModule):
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1- alphas_cumprod)
 
     def training_step(self, batch, batch_idx):
-        batch_size = batch["frame"].shape[0]
-        roll = batch["frame"].unsqueeze(1)  
-        waveform = batch["audio"]
-        device = roll.device
-        # Algorithm 1 line 3: sample t uniformally for every example in the batch
-        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
-
-        loss = self.p_losses(roll, waveform, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
-        self.log("Train/loss", loss)            
-      
-        return loss
+        losses, tensors = self.step(batch)
+        
+        with torch.no_grad():
+            if batch_idx == 0 & self.current_epoch % self.trainer.check_val_every_n_epoch:
+                self.visualize_figure(tensors['pred_roll'], 'Train/pred_roll', batch_idx)
+                self.visualize_figure(tensors['label_roll'], 'Train/label_roll', batch_idx)
+        self.log("Train/diffusion_loss", losses['diffusion_loss'])
+        self.log("Train/amt_loss", losses['amt_loss'])
+        
+        return losses['diffusion_loss'] + losses['amt_loss']
     
     def validation_step(self, batch, batch_idx):
-        batch_size = batch["frame"].shape[0]
-        roll = batch["frame"].unsqueeze(1)
-        waveform = batch["audio"]
-        device = roll.device
-        # Algorithm 1 line 3: sample t uniformally for every example in the batch
-        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
-
-        loss = self.p_losses(roll, waveform, t, self.sqrt_alphas_cumprod, self.sqrt_one_minus_alphas_cumprod, loss_type=self.hparams.loss_type)
-        self.log("Val/loss", loss)
+        losses, tensors = self.step(batch)
+        self.log("Val/diffusion_loss", losses['diffusion_loss'])
+        self.log("Val/amt_loss", losses['amt_loss'])
         
+        if batch_idx == 0:
+            self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
+            self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
+            
     def test_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
         self.log("Test/diffusion_loss", losses['diffusion_loss'])

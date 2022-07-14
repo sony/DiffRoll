@@ -28,7 +28,7 @@ def main(cfg):
     infer_set = torch.utils.data.TensorDataset(
         torch.randn(
             (infer_samples,
-             cfg.model.channels,
+             cfg.model.args.channels,
              *train_set[0]['frame'].shape
             )
         )
@@ -41,8 +41,7 @@ def main(cfg):
 
     # Model
     model = SpecUnet(     
-        **cfg.model,
-        dim_mults=(1, 2, 4,),
+        **cfg.model.args,
         spec_args=cfg.spec.args,
         **cfg.task,
     )
@@ -56,8 +55,8 @@ def main(cfg):
                                           mode="min",
                                           auto_insert_metric_name=False)    
     
-    name = f"diffusion_dim={cfg.model.dim}-" \
-           f"channels={cfg.model.channels}-" \
+    name = f"diffusion_dim={cfg.model.args.dim}-" \
+           f"channels={cfg.model.args.channels}-" \
            f"{model.hparams.loss_type}-" \
            f"MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
