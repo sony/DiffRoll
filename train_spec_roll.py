@@ -34,9 +34,9 @@ def main(cfg):
         )
     )
         
-    train_loader = DataLoader(train_set, batch_size=4, num_workers=16)
-    val_loader = DataLoader(val_set, batch_size=4)
-    test_loader = DataLoader(test_set, batch_size=4)
+    train_loader = DataLoader(train_set, **cfg.dataloader.train)
+    val_loader = DataLoader(val_set, **cfg.dataloader.val)
+    test_loader = DataLoader(test_set, **cfg.dataloader.test)
     infer_loader =  DataLoader(infer_set, batch_size=infer_samples)
 
     # Model
@@ -61,7 +61,7 @@ def main(cfg):
                          logger=logger)
     
     trainer.fit(model, train_loader, val_loader)
-    trainer.predict(model, infer_loader)
+    train.test(model, test_loader)
     
 if __name__ == "__main__":
     main()
