@@ -245,11 +245,6 @@ class SpecRollDiffusion(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
-        
-        with torch.no_grad():
-            if batch_idx == 0 & self.current_epoch % self.trainer.check_val_every_n_epoch:
-                self.visualize_figure(tensors['pred_roll'], 'Train/pred_roll', batch_idx)
-                self.visualize_figure(tensors['label_roll'], 'Train/label_roll', batch_idx)
         self.log("Train/diffusion_loss", losses['diffusion_loss'])
         self.log("Train/amt_loss", losses['amt_loss'])
         
@@ -276,6 +271,7 @@ class SpecRollDiffusion(pl.LightningModule):
     def visualize_figure(self, tensors, tag, batch_idx):
         fig, ax = plt.subplots(2,2)
         for idx in range(4): # visualize only 4 piano rolls
+            torch.save(tensors[idx], 'problem_tensor.pt')
             # roll_pred (1, T, F)
             ax.flatten()[idx].imshow(tensors[idx][0].T.cpu(), aspect='auto', origin='lower')
         self.logger.experiment.add_figure(f"{tag}{idx}", fig)
