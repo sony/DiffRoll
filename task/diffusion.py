@@ -48,21 +48,6 @@ def extract_x0(x_t, epsilon, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumpr
     return (x_t - sqrt_one_minus_alphas_cumprod_t * epsilon) / sqrt_alphas_cumprod_t
 
 
-def extract(a, t, x_shape):
-    # extract alpha at timestep=t
-    # t should be an index
-    batch_size = t.shape[0]
-    out = a.gather(-1, t.cpu())
-    return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
-
-
-
-
-# Algorithm 2 (including returning all images)
-def sample(model, image_size, batch_size=16, channels=3):
-    return p_sample_loop(model, shape=(batch_size, channels, *image_size))
-
-
 class RollDiffusion(pl.LightningModule):
     def __init__(self,
                  lr,
@@ -135,11 +120,6 @@ class RollDiffusion(pl.LightningModule):
         for i in tqdm(reversed(range(0, self.hparams.timesteps)), desc='sampling loop time step', total=self.hparams.timesteps):
             img = self.p_sample(
                            img,
-                           torch.full(
-                               (b,),
-                               i,
-                               device=device,
-                               dtype=torch.long),
                            i)
             img_npy = img.cpu().numpy()
             
@@ -175,25 +155,28 @@ class RollDiffusion(pl.LightningModule):
 
         return loss
     
-    def p_sample(self, x, t, t_index):
+    def p_sample(self, x, t_index):
         # x is Guassian noise
         
-        betas_t = extract(self.betas, t, x.shape)
-        sqrt_one_minus_alphas_cumprod_t = extract(
-            self.sqrt_one_minus_alphas_cumprod, t, x.shape
-        )
-        sqrt_recip_alphas_t = extract(self.sqrt_recip_alphas, t, x.shape)
+        # extracting coefficients at time t
+        betas_t = self.betas[t_index]
+        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t_index]
+        sqrt_recip_alphas_t = self.sqrt_recip_alphas[t_index]
 
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
         # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean
+        # Use our model (noise predictor) to predict the mean        
         model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self(x, t) / sqrt_one_minus_alphas_cumprod_t
+            x - betas_t * self(x, t_tensor) / sqrt_one_minus_alphas_cumprod_t
         )
 
         if t_index == 0:
             return model_mean
         else:
-            posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            posterior_variance_t = self.posterior_variance[t_index]
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
             return model_mean + torch.sqrt(posterior_variance_t) * noise             
