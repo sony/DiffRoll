@@ -19,12 +19,9 @@ def q_sample(x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noi
     """    
     
     # sqrt_alphas is mean of the Gaussian N()    
-    sqrt_alphas_cumprod_t = extract(sqrt_alphas_cumprod, t, x_start.shape) # extract the value of \bar{\alpha} at time=t
+    sqrt_alphas_cumprod_t = sqrt_alphas_cumprod[t]# extract the value of \bar{\alpha} at time=t
     # sqrt_alphas is variance of the Gaussian N()
-    sqrt_one_minus_alphas_cumprod_t = extract(
-        sqrt_one_minus_alphas_cumprod, t, x_start.shape
-    )
-
+    sqrt_one_minus_alphas_cumprod_t = sqrt_one_minus_alphas_cumprod[t]
 
     # scale down the input, and scale up the noise as time increases?
     return sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
@@ -36,13 +33,10 @@ def extract_x0(x_t, epsilon, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumpr
     epsilon: The noise predicted from the model
     t: timestep information
     """
-    
     # sqrt_alphas is mean of the Gaussian N()    
-    sqrt_alphas_cumprod_t = extract(sqrt_alphas_cumprod, t, x_t.shape) # extract the value of \bar{\alpha} at time=t
+    sqrt_alphas_cumprod_t = sqrt_alphas_cumprod[t] # extract the value of \bar{\alpha} at time=t
     # sqrt_alphas is variance of the Gaussian N()
-    sqrt_one_minus_alphas_cumprod_t = extract(
-        sqrt_one_minus_alphas_cumprod, t, x_t.shape
-    )
+    sqrt_one_minus_alphas_cumprod_t = sqrt_one_minus_alphas_cumprod[t]
 
     # obtaining x0 based on the inverse of eq.4 of DDPM paper
     return (x_t - sqrt_one_minus_alphas_cumprod_t * epsilon) / sqrt_alphas_cumprod_t
@@ -257,7 +251,9 @@ class SpecRollDiffusion(pl.LightningModule):
             self.visualize_figure(tensors['pred_roll'], 'Test/pred_roll', batch_idx)
             self.visualize_figure(tensors['pred_roll']>0.6, 'Test/binary_roll', batch_idx)
             self.visualize_figure(tensors['label_roll'], 'Test/label_roll', batch_idx)
-        
+            
+
+            
     def visualize_figure(self, tensors, tag, batch_idx):
         fig, ax = plt.subplots(2,2)
         for idx in range(4): # visualize only 4 piano rolls
@@ -272,7 +268,7 @@ class SpecRollDiffusion(pl.LightningModule):
         waveform = batch["audio"]
         device = roll.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
-        t = torch.randint(0, self.hparams.timesteps, (batch_size,), device=device).long()
+        t = torch.randint(0, self.hparams.timesteps, (1,), device=device)[0].long() # [0] to remove dimension
 
         noise = torch.randn_like(roll) # creating label noise
         
@@ -283,7 +279,9 @@ class SpecRollDiffusion(pl.LightningModule):
             sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
             noise=noise)
         
-        epsilon_pred = self(x_t, waveform, t) # predict the noise at previous step (t-1)
+        t_tensor = t.repeat(batch_size).to(roll.device)
+        
+        epsilon_pred = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
         diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
         
         pred_roll = extract_x0(
@@ -306,7 +304,9 @@ class SpecRollDiffusion(pl.LightningModule):
             "label_roll": roll
         }
         
-        return losses, tensors    
+        return losses, tensors
+
+
         
     def p_losses(self, label, prediction, loss_type="l1"):
         if loss_type == 'l1':
