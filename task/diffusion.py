@@ -220,6 +220,7 @@ class SpecRollDiffusion(pl.LightningModule):
 
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1- alphas_cumprod)
+        self.inner_loop = tqdm(range(self.hparams.timesteps), desc='sampling loop time step')
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
@@ -243,14 +244,15 @@ class SpecRollDiffusion(pl.LightningModule):
             self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
             
     def test_step(self, batch, batch_idx):
-        losses, tensors = self.step(batch)
-        self.log("Test/diffusion_loss", losses['diffusion_loss'])
-        self.log("Test/amt_loss", losses['amt_loss'])
-        
         if batch_idx == 0:
-            self.visualize_figure(tensors['pred_roll'], 'Test/pred_roll', batch_idx)
-            self.visualize_figure(tensors['pred_roll']>0.6, 'Test/binary_roll', batch_idx)
-            self.visualize_figure(tensors['label_roll'], 'Test/label_roll', batch_idx)
+            self.reverse_step(batch)
+            self.log("Test/diffusion_loss", losses['diffusion_loss'])
+            self.log("Test/amt_loss", losses['amt_loss'])
+
+            if batch_idx == 0:
+                self.visualize_figure(tensors['pred_roll'], 'Test/pred_roll', batch_idx)
+                self.visualize_figure(tensors['pred_roll']>0.6, 'Test/binary_roll', batch_idx)
+                self.visualize_figure(tensors['label_roll'], 'Test/label_roll', batch_idx)
             
 
             
@@ -305,6 +307,39 @@ class SpecRollDiffusion(pl.LightningModule):
         }
         
         return losses, tensors
+    
+    def reverse_step(self, batch):
+        batch_size = batch["frame"].shape[0]
+        roll = batch["frame"].unsqueeze(1)
+        waveform = batch["audio"]
+        device = roll.device
+        # Algorithm 1 line 3: sample t uniformally for every example in the batch
+        
+        self.inner_loop.refresh()
+        self.inner_loop.reset()
+        
+        noise = torch.randn_like(roll)
+        noise_list = []
+
+        for t_index in reversed(range(0, self.hparams.timesteps)):
+            noise = self.reverse_diffusion(noise, waveform, t_index)
+            noise_npy = noise.cpu().numpy()
+            if (t_index+1)%10==0:
+                for idx, j in enumerate(noise_npy):
+                    # j (1, T, F)
+                    fig, ax = plt.subplots(1,1)
+                    ax.imshow(j[0].T>0.6, aspect='auto', origin='lower')
+                    self.logger.experiment.add_figure(
+                        f"sample_{idx}",
+                        fig,
+                        global_step=self.hparams.timesteps-t_index)
+                    # self.hparams.timesteps-i is used because slide bar won't show
+                    # if global step starts from self.hparams.timesteps
+            noise_list.append(noise_npy)                       
+            self.inner_loop.update()
+            
+        torch.save(noise_list, 'noise_list.pt')
+        
 
 
         
@@ -319,6 +354,32 @@ class SpecRollDiffusion(pl.LightningModule):
             raise NotImplementedError()
 
         return loss
+    
+    def reverse_diffusion(self, x, waveform, t_index):
+        # x is Guassian noise
+        
+        # extracting coefficients at time t
+        betas_t = self.betas[t_index]
+        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t_index]
+        sqrt_recip_alphas_t = self.sqrt_recip_alphas[t_index]
+
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean        
+        model_mean = sqrt_recip_alphas_t * (
+            x - betas_t * self(x, waveform, t_tensor) / sqrt_one_minus_alphas_cumprod_t
+        )
+
+        if t_index == 0:
+            return model_mean
+        else:
+            # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            posterior_variance_t = self.posterior_variance[t_index]
+            noise = torch.randn_like(x)
+            # Algorithm 2 line 4:
+            return model_mean + torch.sqrt(posterior_variance_t) * noise    
     
 
     def configure_optimizers(self):
