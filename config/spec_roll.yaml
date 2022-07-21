@@ -9,6 +9,7 @@ learning_rate: 1e-5
 epochs: 200
 download: False
 data_root: './'
+pin_memory: False
 
 dataset:
     train:
@@ -54,17 +55,17 @@ dataloader:
         batch_size: 16
         num_workers: 8
         shuffle: True
-        pin_memory: True
+        pin_memory: ${pin_memory}
     val:
         batch_size: 16
         num_workers: 8
         shuffle: False
-        pin_memory: True
+        pin_memory: ${pin_memory}
     test:
         batch_size: 4
         num_workers: 8
         shuffle: False
-        pin_memory: True
+        pin_memory: ${pin_memory}
         
         
 trainer:
@@ -84,6 +85,8 @@ task:
     lr: ${learning_rate}
     timesteps: 200
     loss_type: 'huber'
+    loss_keys:
+        - 'diffusion_loss'    
 
 defaults:
     - spec: mel

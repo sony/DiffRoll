@@ -61,7 +61,7 @@ def main(cfg):
                          logger=logger)
     
     trainer.fit(model, train_loader, val_loader)
-    train.test(model, test_loader)
+    trainer.test(model, test_loader)
     
 if __name__ == "__main__":
     main()

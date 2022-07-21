@@ -220,7 +220,8 @@ class SpecRollDiffusion(pl.LightningModule):
     def __init__(self,
                  lr,
                  timesteps,
-                 loss_type
+                 loss_type,
+                 loss_keys
                 ):
         super().__init__()
         
@@ -248,7 +249,12 @@ class SpecRollDiffusion(pl.LightningModule):
         self.log("Train/diffusion_loss", losses['diffusion_loss'])
         self.log("Train/amt_loss", losses['amt_loss'])
         
-        return losses['diffusion_loss'] + losses['amt_loss']
+        # calculating total loss based on keys give
+        total_loss = 0
+        for k in self.hparams.loss_keys:
+            total_loss += losses[k]
+            
+        return total_loss
     
     def validation_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
@@ -266,15 +272,15 @@ class SpecRollDiffusion(pl.LightningModule):
         
         if batch_idx == 0:
             self.visualize_figure(tensors['pred_roll'], 'Test/pred_roll', batch_idx)
+            self.visualize_figure(tensors['pred_roll']>0.6, 'Test/binary_roll', batch_idx)
             self.visualize_figure(tensors['label_roll'], 'Test/label_roll', batch_idx)
         
     def visualize_figure(self, tensors, tag, batch_idx):
         fig, ax = plt.subplots(2,2)
         for idx in range(4): # visualize only 4 piano rolls
-            torch.save(tensors[idx], 'problem_tensor.pt')
             # roll_pred (1, T, F)
             ax.flatten()[idx].imshow(tensors[idx][0].T.cpu(), aspect='auto', origin='lower')
-        self.logger.experiment.add_figure(f"{tag}{idx}", fig)
+        self.logger.experiment.add_figure(f"{tag}{idx}", fig, global_step=self.current_epoch)
         plt.close()
         
     def step(self, batch):
@@ -303,6 +309,7 @@ class SpecRollDiffusion(pl.LightningModule):
             t,
             sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
             sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)
+        
         pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
         amt_loss = F.binary_cross_entropy(pred_roll, roll)
         
