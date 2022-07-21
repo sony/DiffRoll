@@ -246,14 +246,7 @@ class SpecRollDiffusion(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         if batch_idx == 0:
             self.reverse_step(batch)
-            self.log("Test/diffusion_loss", losses['diffusion_loss'])
-            self.log("Test/amt_loss", losses['amt_loss'])
 
-            if batch_idx == 0:
-                self.visualize_figure(tensors['pred_roll'], 'Test/pred_roll', batch_idx)
-                self.visualize_figure(tensors['pred_roll']>0.6, 'Test/binary_roll', batch_idx)
-                self.visualize_figure(tensors['label_roll'], 'Test/label_roll', batch_idx)
-            
 
             
     def visualize_figure(self, tensors, tag, batch_idx):
@@ -328,15 +321,34 @@ class SpecRollDiffusion(pl.LightningModule):
                 for idx, j in enumerate(noise_npy):
                     # j (1, T, F)
                     fig, ax = plt.subplots(1,1)
-                    ax.imshow(j[0].T>0.6, aspect='auto', origin='lower')
+                    ax.imshow(j[0].T, aspect='auto', origin='lower')
                     self.logger.experiment.add_figure(
-                        f"sample_{idx}",
+                        f"sample_{idx}/pred",
                         fig,
-                        global_step=self.hparams.timesteps-t_index)
+                        global_step=self.hparams.timesteps-t_index)                 
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
             noise_list.append(noise_npy)                       
             self.inner_loop.update()
+        plt.close()
+            
+        for idx in range(batch_size):
+            fig, ax = plt.subplots(1,1)
+            ax.imshow(roll[idx][0].cpu().T, aspect='auto', origin='lower')
+            self.logger.experiment.add_figure(
+                f"sample_{idx}/label",
+                fig,
+                global_step=0)
+            plt.close()
+
+            fig, ax = plt.subplots(1,1)
+            ax.imshow((noise[idx][0].detach().cpu()>0.6).T, aspect='auto', origin='lower')
+            self.logger.experiment.add_figure(
+                f"sample_{idx}/pred_roll",
+                fig,
+                global_step=0)  
+            plt.close()            
+
             
         torch.save(noise_list, 'noise_list.pt')
         
