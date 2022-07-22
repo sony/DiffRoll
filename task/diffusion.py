@@ -318,34 +318,34 @@ class SpecRollDiffusion(pl.LightningModule):
             noise = self.reverse_diffusion(noise, waveform, t_index)
             noise_npy = noise.cpu().numpy()
             if (t_index+1)%10==0:
+                fig, ax = plt.subplots(2,2)
                 for idx, j in enumerate(noise_npy):
                     # j (1, T, F)
-                    fig, ax = plt.subplots(1,1)
-                    ax.imshow(j[0].T, aspect='auto', origin='lower')
+                    ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
                     self.logger.experiment.add_figure(
-                        f"sample_{idx}/pred",
+                        f"Test/pred",
                         fig,
-                        global_step=self.hparams.timesteps-t_index)                 
+                        global_step=self.hparams.timesteps-t_index)
+                    plt.close()
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
             noise_list.append(noise_npy)                       
             self.inner_loop.update()
-        plt.close()
-            
-        for idx in range(batch_size):
-            fig, ax = plt.subplots(1,1)
-            ax.imshow(roll[idx][0].cpu().T, aspect='auto', origin='lower')
-            self.logger.experiment.add_figure(
-                f"sample_{idx}/label",
-                fig,
-                global_step=0)
-            plt.close()
 
-            fig, ax = plt.subplots(1,1)
-            ax.imshow((noise[idx][0].detach().cpu()>0.6).T, aspect='auto', origin='lower')
+        fig1, ax1 = plt.subplots(2,2)
+        fig2, ax2 = plt.subplots(2,2)
+        for idx in range(batch_size):
+            
+            ax1.flatten()[idx].imshow(roll[idx][0].cpu().T, aspect='auto', origin='lower')
             self.logger.experiment.add_figure(
-                f"sample_{idx}/pred_roll",
-                fig,
+                f"Test/label",
+                fig1,
+                global_step=0)
+            
+            ax2.flatten()[idx].imshow((noise[idx][0].detach().cpu()>0.6).T, aspect='auto', origin='lower')
+            self.logger.experiment.add_figure(
+                f"Test/pred_roll",
+                fig2,
                 global_step=0)  
             plt.close()            
 
