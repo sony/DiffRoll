@@ -33,10 +33,7 @@ def main(cfg):
     
     checkpoint_callback = ModelCheckpoint(**cfg.modelcheckpoint)    
     
-    name = f"diffusion_dim={cfg.model.args.dim}-" \
-           f"channels={cfg.model.args.channels}-" \
-           f"{model.hparams.loss_type}-" \
-           f"MAESTRO"
+    name = f"{cfg.model.name}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,

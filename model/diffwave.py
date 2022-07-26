@@ -17,6 +17,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from task.diffusion import SpecRollDiffusion
+import torchaudio
 
 from math import sqrt
 
@@ -150,17 +152,91 @@ class DiffWave(nn.Module):
         print(f"after projection {x.shape=}")
         x = F.relu(x)
 
+        print(f"before {diffusion_step.shape=}")
         diffusion_step = self.diffusion_embedding(diffusion_step)
+        print(f"after {diffusion_step.shape=}")        
+        
+        print(f"before upsample {spectrogram.shape=}")
         if self.spectrogram_upsampler: # use conditional model
             spectrogram = self.spectrogram_upsampler(spectrogram)
-
+        print(f"after upsample {spectrogram.shape=}")
+            
         skip = None
+        
+        index = 0
+        print(f"{index}: {x.shape=}")
         for layer in self.residual_layers:
+            index += 1
             x, skip_connection = layer(x, diffusion_step, spectrogram)
+            print(f"{index}: {x.shape=}")
+            
+            
+            skip = skip_connection if skip is None else skip_connection + skip
+
+        x = skip / sqrt(len(self.residual_layers))
+        print(f"final x = {x.shape=}")
+        x = self.skip_projection(x)
+        print(f"after skip_projection {x.shape=}")
+        x = F.relu(x)
+        x = self.output_projection(x)
+        print(f"after output_projection {x.shape=}")
+        return x
+
+    
+class DiffRoll(SpecRollDiffusion):
+    def __init__(self,
+                 residual_channels,
+                 unconditional,
+                 n_mels,
+                 residual_layers = 30,
+                 dilation_cycle_length = 10,
+                 spec_args = {},
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.input_projection = Conv1d(88, residual_channels, 1)
+        self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+
+        self.residual_layers = nn.ModuleList([
+            ResidualBlock(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            for i in range(residual_layers)
+        ])
+        self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
+        self.output_projection = Conv1d(residual_channels, 88, 1)
+        nn.init.zeros_(self.output_projection.weight)
+        
+        self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+
+    def forward(self, roll, waveform, diffusion_step):
+        # roll (B, 1, T, F)
+        # waveform (B, L)
+        roll = roll.squeeze(1).transpose(1,2)
+
+        spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
+        
+        T_roll = roll.shape[-1]
+        T_spec = spectrogram.shape[-1]
+        
+        # trimming extra time steps
+        T_min = min(T_roll, T_spec)
+        roll = roll[..., :T_min]
+        spectrogram = spectrogram[..., :T_min]
+        x = self.input_projection(roll)
+        x = F.relu(x)
+
+        diffusion_step = self.diffusion_embedding(diffusion_step)
+            
+        skip = None
+        
+        index = 0
+        for layer in self.residual_layers:
+            index += 1
+            x, skip_connection = layer(x, diffusion_step, spectrogram)
+            
+            
             skip = skip_connection if skip is None else skip_connection + skip
 
         x = skip / sqrt(len(self.residual_layers))
         x = self.skip_projection(x)
         x = F.relu(x)
-        x = self.output_projection(x)
-        return x
+        x = self.output_projection(x) #(B, F, T)
+        return x.transpose(1,2).unsqueeze(1) #(B, T, F)

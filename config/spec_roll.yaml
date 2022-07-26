@@ -53,7 +53,7 @@ dataset:
 dataloader:
     train:
         batch_size: 16
-        num_workers: 8
+        num_workers: 20 
         shuffle: True
         pin_memory: ${pin_memory}
     val:
@@ -83,11 +83,11 @@ modelcheckpoint:
     
 task:
     lr: ${learning_rate}
-    timesteps: 200
+    timesteps: 1000
     loss_type: 'huber'
     loss_keys:
-        - 'diffusion_loss'    
-
+        - 'diffusion_loss'
+        
 defaults:
     - spec: mel
     - model: SpecUnet
