@@ -1,10 +1,7 @@
-
 from tqdm import tqdm
 import hydra
 from hydra.utils import to_absolute_path
-
-from model.unet import SpecUnet
-
+import model as Model
 import torch
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
@@ -23,28 +20,14 @@ def main(cfg):
     train_set = MAESTRO(**cfg.dataset.train)
     val_set = MAESTRO(**cfg.dataset.val)
     test_set = MAESTRO(**cfg.dataset.test)
-    
-    infer_samples = 8
-    infer_set = torch.utils.data.TensorDataset(
-        torch.randn(
-            (infer_samples,
-             cfg.model.args.channels,
-             *train_set[0]['frame'].shape
-            )
-        )
-    )
         
     train_loader = DataLoader(train_set, **cfg.dataloader.train)
     val_loader = DataLoader(val_set, **cfg.dataloader.val)
     test_loader = DataLoader(test_set, **cfg.dataloader.test)
-    infer_loader =  DataLoader(infer_set, batch_size=infer_samples)
 
     # Model
-    model = SpecUnet(     
-        **cfg.model.args,
-        spec_args=cfg.spec.args,
-        **cfg.task,
-    )
+    model = getattr(Model, cfg.model.name)\
+        (**cfg.model.args, spec_args=cfg.spec.args, **cfg.task)
 
     optimizer = Adam(model.parameters(), lr=1e-3)
     
