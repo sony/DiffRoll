@@ -257,8 +257,12 @@ class DiffRoll(SpecRollDiffusion):
         # roll (B, 1, T, F)
         # waveform (B, L)
         roll = roll.squeeze(1).transpose(1,2)
-        spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
-        roll, spectrogram = trim_spec_roll(roll, spectrogram)
+        
+        if self.mel_layer != None:
+            spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
+            roll, spectrogram = trim_spec_roll(roll, spectrogram)
+        else:
+            spectrogram = None
         x = self.input_projection(roll)
         x = F.relu(x)
 
