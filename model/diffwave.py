@@ -26,6 +26,16 @@ from math import sqrt
 Linear = nn.Linear
 ConvTranspose2d = nn.ConvTranspose2d
 
+def trim_spec_roll(roll, spectrogram):
+    T_roll = roll.shape[-1]
+    T_spec = spectrogram.shape[-1]
+    
+    # trimming extra time steps
+    T_min = min(T_roll, T_spec)
+    roll = roll[..., :T_min]
+    spectrogram = spectrogram[..., :T_min]    
+
+    return roll, spectrogram
 
 def Conv1d(*args, **kwargs):
     layer = nn.Conv1d(*args, **kwargs)
@@ -238,22 +248,17 @@ class DiffRoll(SpecRollDiffusion):
         self.output_projection = Conv1d(residual_channels, 88, 1)
         nn.init.zeros_(self.output_projection.weight)
         
-        self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+        if unconditional:
+            self.mel_layer = None
+        else:
+            self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
     def forward(self, roll, waveform, diffusion_step):
         # roll (B, 1, T, F)
         # waveform (B, L)
         roll = roll.squeeze(1).transpose(1,2)
-
         spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
-        
-        T_roll = roll.shape[-1]
-        T_spec = spectrogram.shape[-1]
-        
-        # trimming extra time steps
-        T_min = min(T_roll, T_spec)
-        roll = roll[..., :T_min]
-        spectrogram = spectrogram[..., :T_min]
+        roll, spectrogram = trim_spec_roll(roll, spectrogram)
         x = self.input_projection(roll)
         x = F.relu(x)
 
