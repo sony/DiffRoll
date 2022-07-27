@@ -32,6 +32,12 @@ def Conv1d(*args, **kwargs):
     nn.init.kaiming_normal_(layer.weight)
     return layer
 
+def Conv2d(*args, **kwargs):
+    layer = nn.Conv2d(*args, **kwargs)
+    nn.init.kaiming_normal_(layer.weight)
+    return layer
+
+
 
 @torch.jit.script
 def silu(x):
@@ -124,6 +130,45 @@ class ResidualBlock(nn.Module):
         residual, skip = torch.chunk(y, 2, dim=1)
         return (x + residual) / sqrt(2.0), skip
 
+class ResidualBlockv2(nn.Module):
+    def __init__(self, n_mels, residual_channels, dilation, uncond=False):
+        '''
+        :param n_mels: inplanes of conv1x1 for spectrogram conditional
+        :param residual_channels: audio conv
+        :param dilation: audio conv dilation
+        :param uncond: disable spectrogram conditional
+        '''
+        super().__init__()
+        self.dilated_conv = Conv2d(residual_channels, 2 * residual_channels, 3, padding=dilation, dilation=dilation)
+        self.diffusion_projection = Linear(512, residual_channels)
+        if not uncond: # conditional model
+            self.conditioner_projection = Conv2d(1, 2 * residual_channels, 1)
+        else: # unconditional model
+            self.conditioner_projection = None
+
+        self.output_projection = Conv2d(residual_channels, 2 * residual_channels, 1)
+
+    def forward(self, x, diffusion_step, conditioner=None):
+        # x (B, 256, 88, T)
+        # diffusion_step (B, 512)
+        # conditioner (B, 1, 229, 640)
+        assert (conditioner is None and self.conditioner_projection is None) or \
+               (conditioner is not None and self.conditioner_projection is not None)
+
+        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(-1).unsqueeze(-1)
+        y = x + diffusion_step
+        if self.conditioner_projection is None: # using a unconditional model
+            y = self.dilated_conv(y)
+        else:
+            conditioner = self.conditioner_projection(conditioner)
+            y = self.dilated_conv(y) + conditioner
+
+        gate, filter = torch.chunk(y, 2, dim=1)
+        y = torch.sigmoid(gate) * torch.tanh(filter)
+
+        y = self.output_projection(y)
+        residual, skip = torch.chunk(y, 2, dim=1)
+        return (x + residual) / sqrt(2.0), skip
 
 class DiffWave(nn.Module):
     def __init__(self, params):
@@ -149,37 +194,26 @@ class DiffWave(nn.Module):
                (spectrogram is not None and self.spectrogram_upsampler is not None)
         x = audio.unsqueeze(1)
         x = self.input_projection(x)
-        print(f"after projection {x.shape=}")
         x = F.relu(x)
 
-        print(f"before {diffusion_step.shape=}")
         diffusion_step = self.diffusion_embedding(diffusion_step)
-        print(f"after {diffusion_step.shape=}")        
         
-        print(f"before upsample {spectrogram.shape=}")
         if self.spectrogram_upsampler: # use conditional model
             spectrogram = self.spectrogram_upsampler(spectrogram)
-        print(f"after upsample {spectrogram.shape=}")
             
         skip = None
         
         index = 0
-        print(f"{index}: {x.shape=}")
         for layer in self.residual_layers:
             index += 1
             x, skip_connection = layer(x, diffusion_step, spectrogram)
-            print(f"{index}: {x.shape=}")
-            
             
             skip = skip_connection if skip is None else skip_connection + skip
 
         x = skip / sqrt(len(self.residual_layers))
-        print(f"final x = {x.shape=}")
         x = self.skip_projection(x)
-        print(f"after skip_projection {x.shape=}")
         x = F.relu(x)
         x = self.output_projection(x)
-        print(f"after output_projection {x.shape=}")
         return x
 
     
@@ -240,3 +274,63 @@ class DiffRoll(SpecRollDiffusion):
         x = F.relu(x)
         x = self.output_projection(x) #(B, F, T)
         return x.transpose(1,2).unsqueeze(1) #(B, T, F)
+
+class DiffRollv2(SpecRollDiffusion):
+    def __init__(self,
+                 residual_channels,
+                 unconditional,
+                 n_mels,
+                 residual_layers = 30,
+                 dilation_cycle_length = 10,
+                 spec_args = {},
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.input_projection = Conv2d(1, residual_channels, 1)
+        self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+        self.spec_projection = Conv1d(n_mels, 88, 1)
+
+        self.residual_layers = nn.ModuleList([
+            ResidualBlockv2(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            for i in range(residual_layers)
+        ])
+        self.skip_projection = Conv2d(residual_channels, residual_channels, 1)
+        self.output_projection = Conv2d(residual_channels, 1, 1)
+        nn.init.zeros_(self.output_projection.weight)
+        
+        self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+
+    def forward(self, roll, waveform, diffusion_step):
+        # roll (B, 1, T, 88)
+        # waveform (B, L)
+        roll = roll.transpose(-1,-2)
+
+        spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
+        
+        T_roll = roll.shape[-1]
+        T_spec = spectrogram.shape[-1]
+        
+        # trimming extra time steps
+        T_min = min(T_roll, T_spec)
+        roll = roll[..., :T_min]
+        spectrogram = spectrogram[..., :T_min]
+        spectrogram = self.spec_projection(spectrogram).unsqueeze(1) # (B, 1, 88, T)
+        x = self.input_projection(roll)
+        x = F.relu(x)
+
+        diffusion_step = self.diffusion_embedding(diffusion_step)
+        skip = None
+        
+        index = 0
+        for layer in self.residual_layers:
+            index += 1
+            x, skip_connection = layer(x, diffusion_step, spectrogram)
+            
+            
+            skip = skip_connection if skip is None else skip_connection + skip
+
+        x = skip / sqrt(len(self.residual_layers))
+        x = self.skip_projection(x)
+        x = F.relu(x)
+        x = self.output_projection(x) #(B, 1, F, T)
+        
+        return x.transpose(-2,-1) #(B, T, F)

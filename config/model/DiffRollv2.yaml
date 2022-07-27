@@ -1,0 +1,7 @@
+name: 'DiffRollv2'
+args:
+    residual_channels: 16
+    unconditional: False
+    n_mels: ${spec.args.n_mels}
+    residual_layers: 30
+    dilation_cycle_length: 10
