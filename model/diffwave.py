@@ -259,8 +259,9 @@ class DiffRoll(SpecRollDiffusion):
         roll = roll.squeeze(1).transpose(1,2)
         
         if self.mel_layer != None:
-            spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
-            roll, spectrogram = trim_spec_roll(roll, spectrogram)
+            spec = self.mel_layer(waveform) # (B, n_mels, T)
+            spec = torch.log(spec+1e-6)
+            roll, spectrogram = trim_spec_roll(roll, spec)
         else:
             spectrogram = None
         x = self.input_projection(roll)
@@ -282,7 +283,7 @@ class DiffRoll(SpecRollDiffusion):
         x = self.skip_projection(x)
         x = F.relu(x)
         x = self.output_projection(x) #(B, F, T)
-        return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)
+        return x.transpose(1,2).unsqueeze(1), spec #(B, T, F)
 
 class DiffRollv2(SpecRollDiffusion):
     def __init__(self,
@@ -317,8 +318,9 @@ class DiffRollv2(SpecRollDiffusion):
         roll = roll.transpose(-1,-2)
 
         if self.mel_layer != None:
-            spectrogram = self.mel_layer(waveform) # (B, n_mels, T)
-            roll, spectrogram = trim_spec_roll(roll, spectrogram)
+            spec = self.mel_layer(waveform) # (B, n_mels, T)
+            spec = torch.log(spec+1e-6)
+            roll, spectrogram = trim_spec_roll(roll, spec)
             spectrogram = self.spec_projection(spectrogram).unsqueeze(1) # (B, 1, 88, T)
         else:
             spectrogram = None
@@ -342,4 +344,4 @@ class DiffRollv2(SpecRollDiffusion):
         x = F.relu(x)
         x = self.output_projection(x) #(B, 1, F, T)
         
-        return x.transpose(-2,-1), spectrogram #(B, T, F)
+        return x.transpose(-2,-1), spec #(B, T, F)

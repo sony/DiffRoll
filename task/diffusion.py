@@ -241,8 +241,12 @@ class SpecRollDiffusion(pl.LightningModule):
         
         if batch_idx == 0:
             self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
-            self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
-            
+            if self.current_epoch == 0: 
+                self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
+                if self.hparams.unconditional==False:
+                    self.visualize_figure(tensors['spec'].transpose(-1,-2).unsqueeze(1),
+                                          'Val/spec',
+                                          batch_idx)
     def test_step(self, batch, batch_idx):
         if batch_idx == 0:
             self.reverse_step(batch)
@@ -276,7 +280,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         t_tensor = t.repeat(batch_size).to(roll.device)
         
-        epsilon_pred = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
+        epsilon_pred, spec = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
         diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
         
         pred_roll = extract_x0(
@@ -296,7 +300,8 @@ class SpecRollDiffusion(pl.LightningModule):
         
         tensors = {
             "pred_roll": pred_roll,
-            "label_roll": roll
+            "label_roll": roll,
+            "spec": spec
         }
         
         return losses, tensors
