@@ -83,7 +83,7 @@ modelcheckpoint:
     
 task:
     lr: ${learning_rate}
-    timesteps: 1000
+    timesteps: 200
     loss_type: 'huber'
     loss_keys:
         - 'diffusion_loss'

@@ -239,9 +239,11 @@ class DiffRoll(SpecRollDiffusion):
         super().__init__(**kwargs)
         self.input_projection = Conv1d(88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
-
+        
+        # Original dilation for audio was 2**(i % dilation_cycle_length)
+        # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, 1, uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
@@ -298,9 +300,11 @@ class DiffRollv2(SpecRollDiffusion):
         self.input_projection = Conv2d(1, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
         self.spec_projection = Conv1d(n_mels, 88, 1)
-
+        
+        # Original dilation for audio was 2**(i % dilation_cycle_length)
+        # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlockv2(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            ResidualBlockv2(n_mels, residual_channels, 1, uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv2d(residual_channels, residual_channels, 1)
@@ -416,7 +420,7 @@ class DiffRollDebug(SpecRollDiffusion):
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
 
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, 1, uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)

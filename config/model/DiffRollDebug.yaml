@@ -4,4 +4,3 @@ args:
     unconditional: False
     n_mels: 88
     residual_layers: 30
-    dilation_cycle_length: 10
