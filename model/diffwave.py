@@ -253,18 +253,18 @@ class DiffRoll(SpecRollDiffusion):
         else:
             self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
-    def forward(self, roll, waveform, diffusion_step):
+    def forward(self, x_t, waveform, diffusion_step):
         # roll (B, 1, T, F)
         # waveform (B, L)
-        roll = roll.squeeze(1).transpose(1,2)
+        x_t = x_t.squeeze(1).transpose(1,2)
         
         if self.mel_layer != None:
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
-            roll, spectrogram = trim_spec_roll(roll, spec)
+            x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
-        x = self.input_projection(roll)
+        x = self.input_projection(x_t)
         x = F.relu(x)
 
         diffusion_step = self.diffusion_embedding(diffusion_step)
@@ -312,21 +312,21 @@ class DiffRollv2(SpecRollDiffusion):
         else:
             self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
-    def forward(self, roll, waveform, diffusion_step):
-        # roll (B, 1, T, 88)
+    def forward(self, x_t, waveform, diffusion_step):
+        # x_t (B, 1, T, 88)
         # waveform (B, L)
-        roll = roll.transpose(-1,-2)
+        x_t = x_t.transpose(-1,-2)
 
         if self.mel_layer != None:
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
-            roll, spectrogram = trim_spec_roll(roll, spec)
+            x_t, spectrogram = trim_spec_roll(x_t, spec)
             spectrogram = self.spec_projection(spectrogram).unsqueeze(1) # (B, 1, 88, T)
         else:
             spec = None # spec before projection
             spectrogram = None # spec after projection
         
-        x = self.input_projection(roll)
+        x = self.input_projection(x_t)
         x = F.relu(x)
 
         diffusion_step = self.diffusion_embedding(diffusion_step)

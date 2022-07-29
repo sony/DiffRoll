@@ -280,6 +280,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         t_tensor = t.repeat(batch_size).to(roll.device)
         
+        # When debugging model is use, change waveform into roll
         epsilon_pred, spec = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
         diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
         

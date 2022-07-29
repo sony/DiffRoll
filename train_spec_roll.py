@@ -33,7 +33,7 @@ def main(cfg):
     
     checkpoint_callback = ModelCheckpoint(**cfg.modelcheckpoint)    
     
-    name = f"{cfg.model.name}-MAESTRO"
+    name = f"{cfg.model.name}-{cfg.task.loss_type}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
