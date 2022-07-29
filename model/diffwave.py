@@ -358,7 +358,7 @@ class DiffRollv2Debug(SpecRollDiffusion):
                  dilation_cycle_length = 10,
                  spec_args = {},
                  **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, debug=True)
         self.input_projection = Conv2d(1, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
 
@@ -411,7 +411,7 @@ class DiffRollDebug(SpecRollDiffusion):
                  dilation_cycle_length = 10,
                  spec_args = {},
                  **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, debug=True)
         self.input_projection = Conv1d(88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
 

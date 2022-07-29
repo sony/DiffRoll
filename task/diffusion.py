@@ -198,7 +198,8 @@ class SpecRollDiffusion(pl.LightningModule):
                  lr,
                  timesteps,
                  loss_type,
-                 loss_keys
+                 loss_keys,
+                 debug=False
                 ):
         super().__init__()
         
@@ -249,7 +250,7 @@ class SpecRollDiffusion(pl.LightningModule):
                                           batch_idx)
     def test_step(self, batch, batch_idx):
         if batch_idx == 0:
-            self.reverse_step(batch)
+            self.sampling(batch)
 
 
             
@@ -281,7 +282,10 @@ class SpecRollDiffusion(pl.LightningModule):
         t_tensor = t.repeat(batch_size).to(roll.device)
         
         # When debugging model is use, change waveform into roll
-        epsilon_pred, spec = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
+        if self.hparams.debug==True:
+            epsilon_pred, spec = self(x_t, roll, t_tensor) # predict the noise N(0, 1)
+        else:
+            epsilon_pred, spec = self(x_t, waveform, t_tensor) # predict the noise N(0, 1)
         diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
         
         pred_roll = extract_x0(
@@ -307,7 +311,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         return losses, tensors
     
-    def reverse_step(self, batch):
+    def sampling(self, batch):
         batch_size = batch["frame"].shape[0]
         roll = batch["frame"].unsqueeze(1)
         waveform = batch["audio"]
@@ -321,7 +325,10 @@ class SpecRollDiffusion(pl.LightningModule):
         noise_list = []
 
         for t_index in reversed(range(0, self.hparams.timesteps)):
-            noise = self.reverse_diffusion(noise, waveform, t_index)
+            if self.hparams.debug==True:                   
+                noise = self.reverse_diffusion(noise, roll, t_index)
+            else:
+                noise = self.reverse_diffusion(noise, waveform, t_index)
             noise_npy = noise.cpu().numpy()
             if (t_index+1)%10==0:
                 fig, ax = plt.subplots(2,2)
@@ -385,11 +392,10 @@ class SpecRollDiffusion(pl.LightningModule):
         t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
         
         # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean        
+        # Use our model (noise predictor) to predict the mean 
         model_mean = sqrt_recip_alphas_t * (
             x - betas_t * self(x, waveform, t_tensor)[0] / sqrt_one_minus_alphas_cumprod_t
         )
-
         if t_index == 0:
             return model_mean
         else:
