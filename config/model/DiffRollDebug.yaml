@@ -1,0 +1,7 @@
+name: 'DiffRollDebug'
+args:
+    residual_channels: 256
+    unconditional: False
+    n_mels: 88
+    residual_layers: 30
+    dilation_cycle_length: 10

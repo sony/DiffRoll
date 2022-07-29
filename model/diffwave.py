@@ -139,7 +139,7 @@ class ResidualBlock(nn.Module):
         y = self.output_projection(y)
         residual, skip = torch.chunk(y, 2, dim=1)
         return (x + residual) / sqrt(2.0), skip
-
+    
 class ResidualBlockv2(nn.Module):
     def __init__(self, n_mels, residual_channels, dilation, uncond=False):
         '''
@@ -346,3 +346,107 @@ class DiffRollv2(SpecRollDiffusion):
         x = self.output_projection(x) #(B, 1, F, T)
         
         return x.transpose(-2,-1), spec #(B, T, F)
+    
+    
+    
+class DiffRollv2Debug(SpecRollDiffusion):
+    def __init__(self,
+                 residual_channels,
+                 unconditional,
+                 n_mels,
+                 residual_layers = 30,
+                 dilation_cycle_length = 10,
+                 spec_args = {},
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.input_projection = Conv2d(1, residual_channels, 1)
+        self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+
+        self.residual_layers = nn.ModuleList([
+            ResidualBlockv2(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            for i in range(residual_layers)
+        ])
+        self.skip_projection = Conv2d(residual_channels, residual_channels, 1)
+        self.output_projection = Conv2d(residual_channels, 1, 1)
+        nn.init.zeros_(self.output_projection.weight)
+        
+        if unconditional:
+            self.mel_layer = None
+        else:
+            self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+
+    def forward(self, x_t, roll, diffusion_step):
+        # roll (B, 1, T, 88)
+        # waveform (B, L)
+        roll = roll.transpose(-1,-2)
+        x_t = x_t.transpose(-1,-2)
+        
+        x = self.input_projection(x_t)
+        x = F.relu(x)
+
+        diffusion_step = self.diffusion_embedding(diffusion_step)
+        skip = None
+        
+        index = 0
+        for layer in self.residual_layers:
+            index += 1
+            x, skip_connection = layer(x, diffusion_step, roll)
+            
+            
+            skip = skip_connection if skip is None else skip_connection + skip
+
+        x = skip / sqrt(len(self.residual_layers))
+        x = self.skip_projection(x)
+        x = F.relu(x)
+        x = self.output_projection(x) #(B, 1, F, T)
+        
+        return x.transpose(-2,-1), roll #(B, T, F)
+
+class DiffRollDebug(SpecRollDiffusion):
+    def __init__(self,
+                 residual_channels,
+                 unconditional,
+                 n_mels,
+                 residual_layers = 30,
+                 dilation_cycle_length = 10,
+                 spec_args = {},
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.input_projection = Conv1d(88, residual_channels, 1)
+        self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+
+        self.residual_layers = nn.ModuleList([
+            ResidualBlock(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            for i in range(residual_layers)
+        ])
+        self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
+        self.output_projection = Conv1d(residual_channels, 88, 1)
+        nn.init.zeros_(self.output_projection.weight)
+        
+    def forward(self, x_t, roll, diffusion_step):
+        # roll (B, 1, T, F)
+        # waveform (B, L)
+        roll = roll.squeeze(1).transpose(1,2)
+        x_t = x_t.squeeze(1).transpose(1,2)
+        
+        spectrogram = None
+        x = self.input_projection(x_t)
+        x = F.relu(x)
+
+        diffusion_step = self.diffusion_embedding(diffusion_step)
+            
+        skip = None
+        
+        index = 0
+        for layer in self.residual_layers:
+            index += 1
+            x, skip_connection = layer(x, diffusion_step, roll)
+            
+            
+            skip = skip_connection if skip is None else skip_connection + skip
+
+        x = skip / sqrt(len(self.residual_layers))
+        x = self.skip_projection(x)
+        x = F.relu(x)
+        x = self.output_projection(x) #(B, F, T)
+        return x.transpose(1,2).unsqueeze(1), roll #(B, T, F)
