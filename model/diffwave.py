@@ -283,7 +283,7 @@ class DiffRoll(SpecRollDiffusion):
         x = self.skip_projection(x)
         x = F.relu(x)
         x = self.output_projection(x) #(B, F, T)
-        return x.transpose(1,2).unsqueeze(1), spec #(B, T, F)
+        return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)
 
 class DiffRollv2(SpecRollDiffusion):
     def __init__(self,
@@ -323,7 +323,8 @@ class DiffRollv2(SpecRollDiffusion):
             roll, spectrogram = trim_spec_roll(roll, spec)
             spectrogram = self.spec_projection(spectrogram).unsqueeze(1) # (B, 1, 88, T)
         else:
-            spectrogram = None
+            spec = None # spec before projection
+            spectrogram = None # spec after projection
         
         x = self.input_projection(roll)
         x = F.relu(x)

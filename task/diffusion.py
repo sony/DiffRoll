@@ -243,7 +243,7 @@ class SpecRollDiffusion(pl.LightningModule):
             self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
             if self.current_epoch == 0: 
                 self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
-                if self.hparams.unconditional==False:
+                if self.hparams.unconditional==False and tensors['spec']!=None:
                     self.visualize_figure(tensors['spec'].transpose(-1,-2).unsqueeze(1),
                                           'Val/spec',
                                           batch_idx)
@@ -386,7 +386,7 @@ class SpecRollDiffusion(pl.LightningModule):
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean        
         model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self(x, waveform, t_tensor) / sqrt_one_minus_alphas_cumprod_t
+            x - betas_t * self(x, waveform, t_tensor)[0] / sqrt_one_minus_alphas_cumprod_t
         )
 
         if t_index == 0:
