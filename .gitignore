@@ -4,3 +4,5 @@ __pycache__
 *.ipynb
 outputs
 maestro-v2.0.0
+weights
+*.tar.gz
