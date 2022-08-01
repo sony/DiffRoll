@@ -6,6 +6,12 @@ import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from sklearn.metrics import precision_recall_fscore_support
+from .utils import extract_notes_wo_velocity
+from mir_eval.transcription import precision_recall_f1_overlap as evaluate_notes
+from mir_eval.util import midi_to_hz
+import numpy as np
+MIN_MIDI = 21
 
 def linear_beta_schedule(timesteps):
     beta_start = 0.0001
@@ -199,6 +205,7 @@ class SpecRollDiffusion(pl.LightningModule):
                  timesteps,
                  loss_type,
                  loss_keys,
+                 frame_threshold,
                  debug=False
                 ):
         super().__init__()
@@ -249,9 +256,76 @@ class SpecRollDiffusion(pl.LightningModule):
                                           'Val/spec',
                                           batch_idx)
     def test_step(self, batch, batch_idx):
-        if batch_idx == 0:
-            self.sampling(batch)
+        noise_list = self.sampling(batch, batch_idx)
+        # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
+        roll_pred = noise_list[-1][0] # (B, 1, T, F)
+        roll_label = batch["frame"].unsqueeze(1).cpu()
+        
+        if batch_idx==0:
+            for noise_npy, t_index in noise_list:
+                if (t_index+1)%10==0: 
+                    fig, ax = plt.subplots(2,2)
+                    for idx, j in enumerate(noise_npy):
+                        # j (1, T, F)
+                        ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
+                        self.logger.experiment.add_figure(
+                            f"Test/pred",
+                            fig,
+                            global_step=self.hparams.timesteps-t_index)
+                        plt.close()
 
+            fig1, ax1 = plt.subplots(2,2)
+            fig2, ax2 = plt.subplots(2,2)
+            for idx in range(4):
+
+                ax1.flatten()[idx].imshow(roll_label[idx][0].T, aspect='auto', origin='lower')
+                self.logger.experiment.add_figure(
+                    f"Test/label",
+                    fig1,
+                    global_step=0)
+
+                ax2.flatten()[idx].imshow((roll_pred[idx][0]>0.6).T, aspect='auto', origin='lower')
+                self.logger.experiment.add_figure(
+                    f"Test/pred_roll",
+                    fig2,
+                    global_step=0)  
+                plt.close()            
+
+            torch.save(noise_list, 'noise_list.pt')
+            
+        frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
+                                                                        roll_pred.flatten()>self.hparams.frame_threshold,
+                                                                        average='binary')
+        
+        for roll_pred_i, roll_label_i in zip(roll_pred, roll_label.numpy()):
+            # roll_pred (B, 1, T, F)
+            p_est, i_est = extract_notes_wo_velocity(roll_pred_i[0],
+                                                     roll_pred_i[0],
+                                                     onset_threshold=self.hparams.frame_threshold,
+                                                     frame_threshold=self.hparams.frame_threshold,
+                                                     rule='rule1'
+                                                    )
+            
+            p_ref, i_ref = extract_notes_wo_velocity(roll_label_i[0],
+                                                     roll_label_i[0],
+                                                     onset_threshold=self.hparams.frame_threshold,
+                                                     frame_threshold=self.hparams.frame_threshold,
+                                                     rule='rule1'
+                                                    )            
+            
+            scaling = self.hparams.spec_args.hop_length / self.hparams.spec_args.sample_rate
+            # scaling = HOP_LENGTH / SAMPLE_RATE
+
+            # Converting time steps to seconds and midi number to frequency
+            i_ref = (i_ref * scaling).reshape(-1, 2)
+            p_ref = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_ref])
+            i_est = (i_est * scaling).reshape(-1, 2)
+            p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+
+            p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)            
+        
+            self.log("Test/Note_F1", f)         
+        self.log("Test/Frame_F1", frame_f1)        
 
             
     def visualize_figure(self, tensors, tag, batch_idx):
@@ -311,7 +385,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         return losses, tensors
     
-    def sampling(self, batch):
+    def sampling(self, batch, batch_idx):
         batch_size = batch["frame"].shape[0]
         roll = batch["frame"].unsqueeze(1)
         waveform = batch["audio"]
@@ -330,40 +404,12 @@ class SpecRollDiffusion(pl.LightningModule):
             else:
                 noise = self.reverse_diffusion(noise, waveform, t_index)
             noise_npy = noise.cpu().numpy()
-            if (t_index+1)%10==0:
-                fig, ax = plt.subplots(2,2)
-                for idx, j in enumerate(noise_npy):
-                    # j (1, T, F)
-                    ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
-                    self.logger.experiment.add_figure(
-                        f"Test/pred",
-                        fig,
-                        global_step=self.hparams.timesteps-t_index)
-                    plt.close()
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
-            noise_list.append(noise_npy)                       
+            noise_list.append((noise_npy, t_index))                       
             self.inner_loop.update()
-
-        fig1, ax1 = plt.subplots(2,2)
-        fig2, ax2 = plt.subplots(2,2)
-        for idx in range(batch_size):
-            
-            ax1.flatten()[idx].imshow(roll[idx][0].cpu().T, aspect='auto', origin='lower')
-            self.logger.experiment.add_figure(
-                f"Test/label",
-                fig1,
-                global_step=0)
-            
-            ax2.flatten()[idx].imshow((noise[idx][0].detach().cpu()>0.6).T, aspect='auto', origin='lower')
-            self.logger.experiment.add_figure(
-                f"Test/pred_roll",
-                fig2,
-                global_step=0)  
-            plt.close()            
-
-            
-        torch.save(noise_list, 'noise_list.pt')
+        
+        return noise_list
         
 
 
