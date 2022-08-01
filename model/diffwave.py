@@ -192,7 +192,7 @@ class DiffWave(nn.Module):
             self.spectrogram_upsampler = SpectrogramUpsampler(params.n_mels)
 
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(params.n_mels, params.residual_channels, 2**(i % params.dilation_cycle_length), uncond=params.unconditional)
+            ResidualBlock(params.n_mels, params.residual_channels, 2**(i % params.dilation_base), uncond=params.unconditional)
             for i in range(params.residual_layers)
         ])
         self.skip_projection = Conv1d(params.residual_channels, params.residual_channels, 1)
@@ -233,7 +233,7 @@ class DiffRoll(SpecRollDiffusion):
                  unconditional,
                  n_mels,
                  residual_layers = 30,
-                 dilation_cycle_length = 10,
+                 dilation_base = 1,
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs)
@@ -243,7 +243,7 @@ class DiffRoll(SpecRollDiffusion):
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, 1, uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
@@ -293,7 +293,7 @@ class DiffRollv2(SpecRollDiffusion):
                  unconditional,
                  n_mels,
                  residual_layers = 30,
-                 dilation_cycle_length = 10,
+                 dilation_base = 1,
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs)
@@ -304,7 +304,7 @@ class DiffRollv2(SpecRollDiffusion):
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlockv2(n_mels, residual_channels, 1, uncond=unconditional)
+            ResidualBlockv2(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv2d(residual_channels, residual_channels, 1)
@@ -359,7 +359,7 @@ class DiffRollv2Debug(SpecRollDiffusion):
                  unconditional,
                  n_mels,
                  residual_layers = 30,
-                 dilation_cycle_length = 10,
+                 dilation_base = 1,
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs, debug=True)
@@ -367,7 +367,7 @@ class DiffRollv2Debug(SpecRollDiffusion):
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
 
         self.residual_layers = nn.ModuleList([
-            ResidualBlockv2(n_mels, residual_channels, 2**(i % dilation_cycle_length), uncond=unconditional)
+            ResidualBlockv2(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv2d(residual_channels, residual_channels, 1)
@@ -412,7 +412,7 @@ class DiffRollDebug(SpecRollDiffusion):
                  unconditional,
                  n_mels,
                  residual_layers = 30,
-                 dilation_cycle_length = 10,
+                 dilation_base = 1,
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs, debug=True)
@@ -420,7 +420,7 @@ class DiffRollDebug(SpecRollDiffusion):
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
 
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, 1, uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)

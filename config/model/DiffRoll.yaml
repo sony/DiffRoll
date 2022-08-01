@@ -4,3 +4,4 @@ args:
     unconditional: False
     n_mels: ${spec.args.n_mels}
     residual_layers: 30
+    dilation_base: 1

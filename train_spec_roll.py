@@ -33,7 +33,8 @@ def main(cfg):
     
     checkpoint_callback = ModelCheckpoint(**cfg.modelcheckpoint)    
     
-    name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-{cfg.task.loss_type}-MAESTRO"
+    name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
+           f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
