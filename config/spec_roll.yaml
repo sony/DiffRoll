@@ -87,6 +87,7 @@ task:
     loss_type: 'huber'
     loss_keys:
         - 'diffusion_loss'
+    frame_threshold: 0.6
         
 defaults:
     - spec: mel
