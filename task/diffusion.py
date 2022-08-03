@@ -15,9 +15,7 @@ import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 MIN_MIDI = 21
 
-def linear_beta_schedule(timesteps):
-    beta_start = 0.0001
-    beta_end = 0.02
+def linear_beta_schedule(beta_start, beta_end, timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
 
 def q_sample(x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noise=None):
@@ -62,7 +60,8 @@ class RollDiffusion(pl.LightningModule):
     def __init__(self,
                  lr,
                  timesteps,
-                 loss_type
+                 loss_type,
+                 beta_start,
                 ):
         super().__init__()
         
@@ -215,6 +214,8 @@ class SpecRollDiffusion(pl.LightningModule):
                  timesteps,
                  loss_type,
                  loss_keys,
+                 beta_start,
+                 beta_end,                 
                  frame_threshold,
                  debug=False
                 ):
@@ -224,7 +225,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         # define beta schedule
         # beta is variance
-        self.betas = linear_beta_schedule(timesteps=timesteps)
+        self.betas = linear_beta_schedule(beta_start, beta_end, timesteps=timesteps)
 
         # define alphas 
         alphas = 1. - self.betas

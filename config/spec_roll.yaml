@@ -88,6 +88,8 @@ task:
     loss_keys:
         - 'diffusion_loss'
     frame_threshold: 0.6
+    beta_start: 0.0001
+    beta_end: 0.02
         
 defaults:
     - spec: mel
