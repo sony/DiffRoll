@@ -14,25 +14,25 @@ import model as Model
 
 from AudioLoader.music.amt import MAPS, MAESTRO
 
-@hydra.main(config_path="config", config_name="test")
+@hydra.main(config_path="config", config_name="predict")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
 
-    test_set = MAESTRO(**cfg.dataset.test)
+    dataset = MAESTRO(**cfg.dataset)
         
-    test_loader = DataLoader(test_set, batch_size=4)
+    loader = DataLoader(dataset, batch_size=4)
 
     # Model
     model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
-    name = f"Test-{cfg.model.name}-" \
+    name = f"Predict-{cfg.model.name}-" \
            f"MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
                          logger=logger)
     
-    trainer.predict(model, test_loader)
+    trainer.predict(model, loader)
     
 if __name__ == "__main__":
     main()
