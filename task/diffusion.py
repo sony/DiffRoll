@@ -11,6 +11,8 @@ from .utils import extract_notes_wo_velocity
 from mir_eval.transcription import precision_recall_f1_overlap as evaluate_notes
 from mir_eval.util import midi_to_hz
 import numpy as np
+import matplotlib.animation as animation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 MIN_MIDI = 21
 
 def linear_beta_schedule(timesteps):
@@ -341,6 +343,52 @@ class SpecRollDiffusion(pl.LightningModule):
             noise_list = self.sampling(batch, batch_idx)
             # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
             torch.save(noise_list, 'noise_list.pt')
+            
+        def animate_sampling(t_idx):
+            # Tuple of (x_t, t), (x_t-1, t-1), ... (x_0, 0)
+            # x_t (B, 1, T, F)
+
+            for idx in range(4): # visualize only 4 piano rolls
+                # roll_pred (1, T, F)
+                im1 = ax_flat[idx].imshow(noise_list[0][0][idx][0].detach().T.cpu(), aspect='auto', origin='lower')
+                im2 = ax_flat[4+idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][0].T, aspect='auto', origin='lower')
+
+                caxs[idx].cla()
+                caxs[4+idx].cla()        
+                fig.colorbar(im1, cax=caxs[idx])
+                fig.colorbar(im2, cax=caxs[4+idx])
+                # clearing figures
+                fig.canvas.draw()
+                ax_flat[idx].cla()
+                ax_flat[4+idx].cla()
+                # fig.colorbar(im2, ax=ax_flat[4+idx])
+
+            fig.suptitle(f't={t_idx}')            
+            row1_txt.set_text(f'x_t')
+            row2_txt.set_text(f'extracted x_0')
+
+        t_list = torch.arange(0, 200, 1).flip(0)
+        ims = []
+        fig, axes = plt.subplots(2,4, figsize=(16, 5))
+        T = len(noise_list)-1
+
+        title = axes.flatten()[0].set_title(None, fontsize=15)
+        row1_txt = axes.flatten()[0].text(-300,45,f'x_t')
+        row2_txt = axes.flatten()[4].text(-450,45,f'extracted x_0')
+        ax_flat = axes.flatten()
+        caxs = []
+        for ax in axes.flatten():
+            div = make_axes_locatable(ax)
+            caxs.append(div.append_axes('right', '5%', '5%'))
+
+        ani = animation.FuncAnimation(fig,
+                                      animate_sampling,
+                                      frames=tqdm(t_list, desc='Animating'),
+                                      interval=1000,
+                                      blit=False,
+                                      repeat_delay=1000)
+
+        ani.save('algo2.gif', dpi=160, writer='imagemagick')               
         
 
 
