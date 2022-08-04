@@ -267,7 +267,7 @@ class SpecRollDiffusion(pl.LightningModule):
                                           'Val/spec',
                                           batch_idx)
     def test_step(self, batch, batch_idx):
-        noise_list, _ = self.sampling(batch, batch_idx)
+        noise_list = self.sampling(batch, batch_idx)
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
         roll_pred = noise_list[-1][0] # (B, 1, T, F)
         roll_label = batch["frame"].unsqueeze(1).cpu()
