@@ -531,7 +531,7 @@ class SpecRollDiffusion(pl.LightningModule):
             posterior_variance_t = self.posterior_variance[t_index]
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise, spec
+            return (model_mean + torch.sqrt(posterior_variance_t) * noise).clip(0,1), spec
     
 
     def configure_optimizers(self):
