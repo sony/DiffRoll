@@ -370,8 +370,9 @@ class SpecRollDiffusion(pl.LightningModule):
             
 
 
-            t_list = torch.arange(1, 200, 1).flip(0)
-            t_list = t_list[::5]
+            t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
+            if t_list[-1] != self.hparams.timesteps:
+                t_list = torch.cat((t_list, torch.tensor([self.hparams.timesteps])), 0)
             ims = []
             fig, axes = plt.subplots(2,4, figsize=(16, 5))
 

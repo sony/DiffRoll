@@ -161,7 +161,7 @@ class ResidualBlockv2(nn.Module):
     def forward(self, x, diffusion_step, conditioner=None):
         # x (B, 256, 88, T)
         # diffusion_step (B, 512)
-        # conditioner (B, 1, 229, 640)
+        # conditioner (B, 1, 88, 640)
         assert (conditioner is None and self.conditioner_projection is None) or \
                (conditioner is not None and self.conditioner_projection is not None)
 
