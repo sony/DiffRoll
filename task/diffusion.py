@@ -267,12 +267,17 @@ class SpecRollDiffusion(pl.LightningModule):
                                           'Val/spec',
                                           batch_idx)
     def test_step(self, batch, batch_idx):
-        noise_list = self.sampling(batch, batch_idx)
+        noise_list, spec = self.sampling(batch, batch_idx)
+    
+        
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
         roll_pred = noise_list[-1][0] # (B, 1, T, F)
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
         if batch_idx==0:
+            self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
+                                  'Test/spec',
+                                  batch_idx)                
             for noise_npy, t_index in noise_list:
                 if (t_index+1)%10==0: 
                     fig, ax = plt.subplots(2,2)
@@ -364,7 +369,7 @@ class SpecRollDiffusion(pl.LightningModule):
             # row2_txt.set_text(f'extracted x_0')        
         
         if batch_idx==0:
-            noise_list = self.sampling(batch, batch_idx)
+            noise_list, spec = self.sampling(batch, batch_idx)
             # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
             torch.save(noise_list, 'noise_list.pt')
             
@@ -474,16 +479,16 @@ class SpecRollDiffusion(pl.LightningModule):
 
         for t_index in reversed(range(0, self.hparams.timesteps)):
             if self.hparams.debug==True:                   
-                noise = self.reverse_diffusion(noise, roll, t_index)
+                noise, spec = self.reverse_diffusion(noise, roll, t_index)
             else:
-                noise = self.reverse_diffusion(noise, waveform, t_index)
+                noise, spec = self.reverse_diffusion(noise, waveform, t_index)
             noise_npy = noise.detach().cpu().numpy()
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
             noise_list.append((noise_npy, t_index))                       
             self.inner_loop.update()
         
-        return noise_list
+        return noise_list, spec
         
 
 
@@ -513,17 +518,20 @@ class SpecRollDiffusion(pl.LightningModule):
         
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
+        epsilon = self(x, waveform, t_tensor)[0]
+        spec = self(x, waveform, t_tensor)[1]
+        
         model_mean = sqrt_recip_alphas_t * (
-            x - betas_t * self(x, waveform, t_tensor)[0] / sqrt_one_minus_alphas_cumprod_t
+            x - betas_t * epsilon / sqrt_one_minus_alphas_cumprod_t
         )
         if t_index == 0:
-            return model_mean
+            return model_mean, spec
         else:
             # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
             posterior_variance_t = self.posterior_variance[t_index]
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise    
+            return model_mean + torch.sqrt(posterior_variance_t) * noise, spec
     
 
     def configure_optimizers(self):
