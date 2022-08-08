@@ -21,9 +21,13 @@ def main(cfg):
     test_set = MAESTRO(**cfg.dataset.test)
         
     test_loader = DataLoader(test_set, batch_size=4)
+    
 
     # Model
-    model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
+    if cfg.task.frame_threshold!=None:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), frame_threshold=cfg.task.frame_threshold)
+    else:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
     name = f"Test-{cfg.model.name}-" \
            f"MAESTRO"

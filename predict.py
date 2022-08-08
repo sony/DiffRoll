@@ -23,7 +23,10 @@ def main(cfg):
     loader = DataLoader(dataset, batch_size=4)
 
     # Model
-    model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
+    if cfg.task.frame_threshold!=None:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), frame_threshold=cfg.task.frame_threshold)
+    else:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
     name = f"Predict-{cfg.model.name}-" \
            f"MAESTRO"
