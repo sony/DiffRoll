@@ -15,6 +15,42 @@ import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 MIN_MIDI = 21
 
+
+class Normalization():
+    """
+    This class is for normalizing the spectrograms batch by batch.
+    The normalization used is min-max, two modes 'framewise' and 'imagewise' can be selected.
+    In this paper, we found that 'imagewise' normalization works better than 'framewise'
+    
+    If framewise is used, then X must follow the shape of (B, F, T)
+    """
+    def __init__(self, min, max, mode='imagewise'):
+        if mode == 'framewise':
+            def normalize(x):
+                size = x.shape
+                x_max = x.max(1, keepdim=True)[0] # Finding max values for each frame
+                x_min = x.min(1, keepdim=True)[0]  
+                x_std = (x-x_min)/(x_max-x_min) # If there is a column with all zero, nan will occur
+                x_std[torch.isnan(x_std)]=0 # Making nan to 0
+                x_scaled = x_std * (max - min) + min
+                return x_scaled
+        elif mode == 'imagewise':
+            def normalize(x):
+                size = x.shape
+                x_max = x.view(size[0], size[1]*size[2]).max(1, keepdim=True)[0]
+                x_min = x.view(size[0], size[1]*size[2]).min(1, keepdim=True)[0]
+                x_max = x_max.unsqueeze(1) # Make it broadcastable
+                x_min = x_min.unsqueeze(1) # Make it broadcastable 
+                x_std = (x-x_min)/(x_max-x_min)
+                x_scaled = x_std * (max - min) + min
+                return x_scaled
+        else:
+            print(f'please choose the correct mode')
+        self.normalize = normalize
+
+    def __call__(self, x):
+        return self.normalize(x)
+
 def linear_beta_schedule(beta_start, beta_end, timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
 
@@ -217,6 +253,7 @@ class SpecRollDiffusion(pl.LightningModule):
                  beta_start,
                  beta_end,                 
                  frame_threshold,
+                 norm_args,
                  debug=False
                 ):
         super().__init__()
@@ -240,11 +277,12 @@ class SpecRollDiffusion(pl.LightningModule):
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1- alphas_cumprod)
         self.inner_loop = tqdm(range(self.hparams.timesteps), desc='sampling loop time step')
+        self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
         self.log("Train/diffusion_loss", losses['diffusion_loss'])
-        self.log("Train/amt_loss", losses['amt_loss'])
+        # self.log("Train/amt_loss", losses['amt_loss'])
         
         # calculating total loss based on keys give
         total_loss = 0
@@ -256,7 +294,7 @@ class SpecRollDiffusion(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
         self.log("Val/diffusion_loss", losses['diffusion_loss'])
-        self.log("Val/amt_loss", losses['amt_loss'])
+        # self.log("Val/amt_loss", losses['amt_loss'])
         
         if batch_idx == 0:
             self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
@@ -409,8 +447,11 @@ class SpecRollDiffusion(pl.LightningModule):
         plt.close()
         
     def step(self, batch):
+        # batch["frame"] (B, 640, 88)
+        # batch["audio"] (B, L)
+        
         batch_size = batch["frame"].shape[0]
-        roll = batch["frame"].unsqueeze(1)
+        roll = self.normalize(batch["frame"]).unsqueeze(1) 
         waveform = batch["audio"]
         device = roll.device
         
@@ -447,12 +488,12 @@ class SpecRollDiffusion(pl.LightningModule):
             sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
             sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)
         
-        pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
-        amt_loss = F.binary_cross_entropy(pred_roll, roll)
+        # pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
+        # amt_loss = F.binary_cross_entropy(pred_roll, roll)
         
         losses = {
             "diffusion_loss": diffusion_loss,
-            "amt_loss": amt_loss
+            # "amt_loss": amt_loss
         }
         
         tensors = {
@@ -465,7 +506,7 @@ class SpecRollDiffusion(pl.LightningModule):
     
     def sampling(self, batch, batch_idx):
         batch_size = batch["frame"].shape[0]
-        roll = batch["frame"].unsqueeze(1)
+        roll = self.normalize(batch["frame"]).unsqueeze(1)
         waveform = batch["audio"]
         device = roll.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
@@ -531,7 +572,7 @@ class SpecRollDiffusion(pl.LightningModule):
             posterior_variance_t = self.posterior_variance[t_index]
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
-            return (model_mean + torch.sqrt(posterior_variance_t) * noise).clip(0,1), spec
+            return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec
     
 
     def configure_optimizers(self):
