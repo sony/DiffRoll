@@ -300,7 +300,7 @@ class SpecRollDiffusion(pl.LightningModule):
                     fig1,
                     global_step=0)
 
-                ax2.flatten()[idx].imshow((roll_pred[idx][0]>0.6).T, aspect='auto', origin='lower')
+                ax2.flatten()[idx].imshow((roll_pred[idx][0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
                 self.logger.experiment.add_figure(
                     f"Test/pred_roll",
                     fig2,
