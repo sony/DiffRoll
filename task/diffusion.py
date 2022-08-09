@@ -43,6 +43,7 @@ class Normalization():
                 x_min = x_min.unsqueeze(1) # Make it broadcastable 
                 x_std = (x-x_min)/(x_max-x_min)
                 x_scaled = x_std * (max - min) + min
+                x_scaled[torch.isnan(x_scaled)]=min # if piano roll is empty, turn them to min
                 return x_scaled
         else:
             print(f'please choose the correct mode')
