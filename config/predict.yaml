@@ -3,11 +3,11 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './'
-checkpoint_path: './weights/DiffRollv2-L15-C64-huber-MAESTRO.ckpt' # will be ignored in train.py
+checkpoint_path: './weights/L15C512.ckpt' # will be ignored in train.py
 
 dataset:
     root: ${data_root} 
-    groups: 'train'            
+    groups: 'test'            
     download: False
     preload: False
     sequence_length: ${sequence_length}
@@ -24,6 +24,9 @@ dataloader:
         num_workers: 8
         shuffle: False
         pin_memory: True
+        
+task:
+    frame_threshold: 0.8        
         
 trainer:
     gpus: ${gpus}
