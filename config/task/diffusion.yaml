@@ -1,0 +1,12 @@
+lr: ${learning_rate}
+timesteps: 200
+loss_type: 'huber'
+loss_keys:
+    - 'diffusion_loss'
+frame_threshold: 0.6
+beta_start: 0.0001
+beta_end: 0.02
+norm_args:
+- -1
+- 1
+- 'imagewise'

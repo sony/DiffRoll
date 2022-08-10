@@ -74,27 +74,16 @@ trainer:
     check_val_every_n_epoch: ${val_freq}
     
 modelcheckpoint:
-    monitor: 'Train/diffusion_loss'
-    filename: '{epoch:02d}e-diffusion_loss_{Train/diffusion_loss:.2f}'
+    monitor: 'Train/amt_loss'
+    filename: '{epoch:02d}e-amt_loss{Train/amt_loss:.2f}'
     save_top_k: 2
     save_last: True
     mode: "min"
     auto_insert_metric_name: False    
     
-task:
-    lr: ${learning_rate}
-    timesteps: 200
-    loss_type: 'huber'
-    loss_keys:
-        - 'diffusion_loss'
-    frame_threshold: 0.6
-    beta_start: 0.0001
-    beta_end: 0.02
-    norm_args:
-    - -1
-    - 1
-    - 'imagewise'
-        
+
+
 defaults:
     - spec: mel
     - model: SpecUnet
+    - task: baseline
