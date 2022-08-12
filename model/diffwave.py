@@ -517,3 +517,66 @@ class DiffRollBaseline(SpecRollBaseline):
         x = self.output_projection(x) #(B, F, T)
         return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)
     
+    
+class ClassifierFreeDiffRoll(SpecRollDiffusion):
+    def __init__(self,
+                 residual_channels,
+                 unconditional,
+                 n_mels,
+                 residual_layers = 30,
+                 dilation_base = 1,
+                 spec_args = {},
+                 spec_dropout = 0.5,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.input_projection = Conv1d(88, residual_channels, 1)
+        self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+        
+        # Original dilation for audio was 2**(i % dilation_cycle_length)
+        # but we might not need dilation for piano roll
+        self.residual_layers = nn.ModuleList([
+            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+            for i in range(residual_layers)
+        ])
+        self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
+        self.output_projection = Conv1d(residual_channels, 88, 1)
+        self.spec_dropout = torch.nn.Dropout2d(spec_dropout) # for unconditional model
+        nn.init.zeros_(self.output_projection.weight)
+        
+        if unconditional:
+            self.mel_layer = None
+        else:
+            self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+
+    def forward(self, x_t, waveform, diffusion_step):
+        # roll (B, 1, T, F)
+        # waveform (B, L)
+        x_t = x_t.squeeze(1).transpose(1,2)
+        
+        if self.mel_layer != None:
+            spec = self.mel_layer(waveform) # (B, n_mels, T)
+            spec = torch.log(spec+1e-6)
+            spec = self.spec_dropout(spec) # making some spec 0 to be unconditional
+            x_t, spectrogram = trim_spec_roll(x_t, spec)
+        else:
+            spectrogram = None
+        x = self.input_projection(x_t)
+        x = F.relu(x)
+
+        diffusion_step = self.diffusion_embedding(diffusion_step)
+            
+        skip = None
+        
+        index = 0
+        for layer in self.residual_layers:
+            index += 1
+            x, skip_connection = layer(x, diffusion_step, spectrogram)
+            
+            
+            skip = skip_connection if skip is None else skip_connection + skip
+
+        x = skip / sqrt(len(self.residual_layers))
+        x = self.skip_projection(x)
+        x = F.relu(x)
+        x = self.output_projection(x) #(B, F, T)
+        return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)

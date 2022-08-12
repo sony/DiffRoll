@@ -1,0 +1,8 @@
+name: 'ClassifierFreeDiffRoll'
+args:
+    residual_channels: 256
+    unconditional: False
+    n_mels: ${spec.args.n_mels}
+    residual_layers: 30
+    dilation_base: 1
+    spec_dropout: 0.5

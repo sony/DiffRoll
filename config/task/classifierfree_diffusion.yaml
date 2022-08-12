@@ -11,4 +11,5 @@ norm_args:
 - 1
 - 'imagewise'
 sampling:
-    type: 'ddpm'
+    type: 'cfdg_ddpm'
+    w: 4

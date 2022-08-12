@@ -255,6 +255,7 @@ class SpecRollDiffusion(pl.LightningModule):
                  beta_end,                 
                  frame_threshold,
                  norm_args,
+                 sampling,
                  debug=False
                 ):
         super().__init__()
@@ -279,6 +280,8 @@ class SpecRollDiffusion(pl.LightningModule):
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1- alphas_cumprod)
         self.inner_loop = tqdm(range(self.hparams.timesteps), desc='sampling loop time step')
         self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])
+        
+        self.reverse_diffusion = getattr(self, sampling.type)
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
@@ -547,7 +550,7 @@ class SpecRollDiffusion(pl.LightningModule):
 
         return loss
     
-    def reverse_diffusion(self, x, waveform, t_index):
+    def ddpm(self, x, waveform, t_index):
         # x is Guassian noise
         
         # extracting coefficients at time t
@@ -574,6 +577,35 @@ class SpecRollDiffusion(pl.LightningModule):
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
             return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec
+        
+    def cfdg_ddpm(self, x, waveform, t_index):
+        # x is Guassian noise
+        
+        # extracting coefficients at time t
+        betas_t = self.betas[t_index]
+        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t_index]
+        sqrt_recip_alphas_t = self.sqrt_recip_alphas[t_index]
+
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean 
+        epsilon_c, spec = self(x, waveform, t_tensor)
+        epsilon_0, _ = self(x, torch.zeros_like(waveform), t_tensor)
+        epsilon = (1+self.hparams.sampling.w)*epsilon_c - self.hparams.sampling.w*epsilon_0
+        
+        model_mean = sqrt_recip_alphas_t * (
+            x - betas_t * epsilon / sqrt_one_minus_alphas_cumprod_t
+        )
+        if t_index == 0:
+            return model_mean, spec
+        else:
+            # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            posterior_variance_t = self.posterior_variance[t_index]
+            noise = torch.randn_like(x)
+            # Algorithm 2 line 4:
+            return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec        
     
 
     def configure_optimizers(self):
