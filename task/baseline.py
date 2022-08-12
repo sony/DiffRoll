@@ -59,11 +59,11 @@ class SpecRollBaseline(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
     
-        roll_pred = tensors['pred_roll'] # (B, 1, T, F)
+        roll_pred = tensors['pred_roll'].detach().cpu() # (B, 1, T, F)
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
         if batch_idx==0:
-            self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
+            self.visualize_figure(tensors['spec'].cpu().transpose(-1,-2).unsqueeze(1),
                                   'Test/spec',
                                   batch_idx)                
             fig, ax = plt.subplots(2,2)
@@ -73,7 +73,7 @@ class SpecRollBaseline(pl.LightningModule):
                 self.logger.experiment.add_figure(
                     f"Test/pred",
                     fig,
-                    global_step=self.hparams.timesteps-t_index)
+                    global_step=self.hparams.timesteps)
                 plt.close()
 
             fig1, ax1 = plt.subplots(2,2)
@@ -93,13 +93,12 @@ class SpecRollBaseline(pl.LightningModule):
                     global_step=0)  
                 plt.close()            
 
-            torch.save(noise_list, 'noise_list.pt')
             
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
                                                                         roll_pred.flatten()>self.hparams.frame_threshold,
                                                                         average='binary')
         
-        for roll_pred_i, roll_label_i in zip(roll_pred, roll_label.numpy()):
+        for roll_pred_i, roll_label_i in zip(roll_pred.numpy(), roll_label.numpy()):
             # roll_pred (B, 1, T, F)
             p_est, i_est = extract_notes_wo_velocity(roll_pred_i[0],
                                                      roll_pred_i[0],
