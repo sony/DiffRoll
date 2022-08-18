@@ -24,8 +24,12 @@ def main(cfg):
     
 
     # Model
-    if cfg.task.frame_threshold!=None:
-        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), frame_threshold=cfg.task.frame_threshold)
+    if cfg.task.frame_threshold!=None and cfg.task.sampling.type!=None:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), frame_threshold=cfg.task.frame_threshold, sampling=cfg.task.sampling)
+    elif cfg.task.frame_threshold==None and cfg.task.sampling.type!=None:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), sampling=cfg.task.sampling)
+    elif cfg.task.frame_threshold!=None and cfg.task.sampling.type==None:
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), frame_threshold=cfg.task.frame_threshold)              
     else:
         model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
