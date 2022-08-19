@@ -29,7 +29,7 @@ dataloader:
 task:
     frame_threshold: null
     sampling:
-        type: 'ddim'
+        type: 'ddim2ddpm'
         
 trainer:
     gpus: ${gpus}

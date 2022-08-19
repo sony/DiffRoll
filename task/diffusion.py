@@ -283,6 +283,7 @@ class SpecRollDiffusion(pl.LightningModule):
         self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])
         
         self.reverse_diffusion = getattr(self, sampling.type)
+        self.alphas = alphas
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
@@ -618,6 +619,27 @@ class SpecRollDiffusion(pl.LightningModule):
                 self.sqrt_one_minus_alphas_cumprod[t_index-1] * epsilon)
             
         return model_mean, spec
+    
+    def ddim2ddpm(self, x, waveform, t_index):
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean 
+        epsilon, spec = self(x, waveform, t_tensor)
+        
+        if t_index == 0:
+            sigma = (1/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))            
+            model_mean = (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index] 
+        else:
+            sigma = (self.sqrt_one_minus_alphas_cumprod[t_index-1]/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))                    
+            model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * (
+                (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
+                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * epsilon) + sigma * torch.randn_like(x)
+            
+        return model_mean, spec           
         
     def cfdg_ddpm(self, x, waveform, t_index):
         # x is Guassian noise
