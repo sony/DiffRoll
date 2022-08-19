@@ -351,6 +351,31 @@ class SpecRollDiffusion(pl.LightningModule):
 
             torch.save(noise_list, 'noise_list.pt')
             
+            #======== Begins animation ===========
+            t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
+            if t_list[-1] != self.hparams.timesteps:
+                t_list = torch.cat((t_list, torch.tensor([self.hparams.timesteps])), 0)
+            ims = []
+            fig, axes = plt.subplots(2,4, figsize=(16, 5))
+
+            title = axes.flatten()[0].set_title(None, fontsize=15)
+            ax_flat = axes.flatten()
+            caxs = []
+            for ax in axes.flatten():
+                div = make_axes_locatable(ax)
+                caxs.append(div.append_axes('right', '5%', '5%'))
+
+            ani = animation.FuncAnimation(fig,
+                                          self.animate_sampling,
+                                          frames=tqdm(t_list, desc='Animating'),
+                                          fargs=(fig, ax_flat, caxs, noise_list, ),                                          
+                                          interval=500,                                          
+                                          blit=False,
+                                          repeat_delay=1000)
+            ani.save('algo2.gif', dpi=80, writer='imagemagick')
+            #======== Animation saved ===========
+            
+            
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
                                                                         roll_pred.flatten()>self.hparams.frame_threshold,
                                                                         average='binary')
@@ -386,30 +411,7 @@ class SpecRollDiffusion(pl.LightningModule):
         self.log("Test/Frame_F1", frame_f1)
         
         
-    def predict_step(self, batch, batch_idx):
-        def animate_sampling(t_idx):
-            # Tuple of (x_t, t), (x_t-1, t-1), ... (x_0, 0)
-            # x_t (B, 1, T, F)
-            # clearing figures to prevent slow down in each iteration.d
-            fig.canvas.draw()
-            for idx in range(4): # visualize only 4 piano rolls
-                ax_flat[idx].cla()
-                ax_flat[4+idx].cla()
-                caxs[idx].cla()
-                caxs[4+idx].cla()     
-                
-                # roll_pred (1, T, F)
-                im1 = ax_flat[idx].imshow(noise_list[0][0][idx][0].detach().T.cpu(), aspect='auto', origin='lower')
-                im2 = ax_flat[4+idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][0].T, aspect='auto', origin='lower')
-                fig.colorbar(im1, cax=caxs[idx])
-                fig.colorbar(im2, cax=caxs[4+idx])
-
-            fig.suptitle(f't={t_idx}')
-            row1_txt = axes.flatten()[0].text(-400,45,f'Gaussian N(0,1)')
-            row2_txt = axes.flatten()[4].text(-300,45,'x_{t-1}')            
-            # row1_txt.set_text(f'x_t')
-            # row2_txt.set_text(f'extracted x_0')        
-        
+    def predict_step(self, batch, batch_idx): 
         if batch_idx==0:
             noise_list, spec = self.sampling(batch, batch_idx)
             # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
@@ -417,6 +419,7 @@ class SpecRollDiffusion(pl.LightningModule):
             
 
 
+            #======== Begins animation ===========
             t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
             if t_list[-1] != self.hparams.timesteps:
                 t_list = torch.cat((t_list, torch.tensor([self.hparams.timesteps])), 0)
@@ -431,13 +434,14 @@ class SpecRollDiffusion(pl.LightningModule):
                 caxs.append(div.append_axes('right', '5%', '5%'))
 
             ani = animation.FuncAnimation(fig,
-                                          animate_sampling,
+                                          self.animate_sampling,
                                           frames=tqdm(t_list, desc='Animating'),
-                                          interval=500,
+                                          fargs=(fig, ax_flat, caxs, noise_list, ),                                          
+                                          interval=500,                                          
                                           blit=False,
                                           repeat_delay=1000)
-
-            ani.save('algo2.gif', dpi=80, writer='imagemagick')               
+            ani.save('algo2.gif', dpi=80, writer='imagemagick')
+            #======== Animation saved ===========              
         
 
 
@@ -587,8 +591,7 @@ class SpecRollDiffusion(pl.LightningModule):
         epsilon, spec = self(x, waveform, t_tensor)
         
         if t_index == 0:
-            model_mean = 
-                (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index] 
+            model_mean = (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index] 
         else:
             model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * (
                 (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
@@ -637,3 +640,24 @@ class SpecRollDiffusion(pl.LightningModule):
 
 #         return [optimizer], [{"scheduler":scheduler, "interval": "step"}]
         return [optimizer]
+
+    def animate_sampling(self, t_idx, fig, ax_flat, caxs, noise_list):
+        # Tuple of (x_t, t), (x_t-1, t-1), ... (x_0, 0)
+        # x_t (B, 1, T, F)
+        # clearing figures to prevent slow down in each iteration.d
+        fig.canvas.draw()
+        for idx in range(4): # visualize only 4 piano rolls
+            ax_flat[idx].cla()
+            ax_flat[4+idx].cla()
+            caxs[idx].cla()
+            caxs[4+idx].cla()     
+
+            # roll_pred (1, T, F)
+            im1 = ax_flat[idx].imshow(noise_list[0][0][idx][0].detach().T.cpu(), aspect='auto', origin='lower')
+            im2 = ax_flat[4+idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][0].T, aspect='auto', origin='lower')
+            fig.colorbar(im1, cax=caxs[idx])
+            fig.colorbar(im2, cax=caxs[4+idx])
+
+        fig.suptitle(f't={t_idx}')
+        row1_txt = ax_flat[0].text(-400,45,f'Gaussian N(0,1)')
+        row2_txt = ax_flat[4].text(-300,45,'x_{t-1}')    
