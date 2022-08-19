@@ -630,14 +630,20 @@ class SpecRollDiffusion(pl.LightningModule):
         
         if t_index == 0:
             sigma = (1/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
-                torch.sqrt(1-self.alphas[t_index]))            
+                torch.sqrt(1-self.alphas[t_index])) 
+            # sigma = 0                           
             model_mean = (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index] 
         else:
             sigma = (self.sqrt_one_minus_alphas_cumprod[t_index-1]/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
-                torch.sqrt(1-self.alphas[t_index]))                    
+                torch.sqrt(1-self.alphas[t_index]))    
+            # sigma = 0
+            # model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * (
+            #     (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
+            #     torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * epsilon) + sigma * torch.randn_like(x)
+            
             model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * (
                 (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
-                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * epsilon) + sigma * torch.randn_like(x)
+                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2) * epsilon) + sigma * torch.randn_like(x)            
             
         return model_mean, spec           
         

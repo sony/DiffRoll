@@ -34,7 +34,7 @@ def main(cfg):
         model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
     name = f"Test-{cfg.model.name}-" \
-           f"MAESTRO"
+           f"{cfg.task.sampling.type}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
