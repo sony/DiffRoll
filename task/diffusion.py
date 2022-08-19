@@ -255,6 +255,7 @@ class SpecRollDiffusion(pl.LightningModule):
                  beta_end,                 
                  frame_threshold,
                  norm_args,
+                 training,
                  sampling,
                  debug=False
                 ):
@@ -483,18 +484,37 @@ class SpecRollDiffusion(pl.LightningModule):
         
         
         # When debugging model is use, change waveform into roll
-        if self.hparams.debug==True:
-            epsilon_pred, spec = self(x_t, roll, t) # predict the noise N(0, 1)
-        else:
+        if self.hparams.training.mode == 'epsilon':
+            if self.hparams.debug==True:
+                epsilon_pred, spec = self(x_t, roll, t) # predict the noise N(0, 1)
+            else:
+                epsilon_pred, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
+            diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
+
+            pred_roll = extract_x0(
+                x_t,
+                epsilon_pred,
+                t,
+                sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
+                sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)
+            
+        elif self.hparams.training.mode == 'x_0':
+            pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
+            diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)
+            
+        elif self.hparams.training.mode == 'ex_0':
             epsilon_pred, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
-        diffusion_loss = self.p_losses(noise, epsilon_pred, loss_type=self.hparams.loss_type)
+            pred_roll = extract_x0(
+                x_t,
+                epsilon_pred,
+                t,
+                sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
+                sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)            
+            diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)   
+            
         
-        pred_roll = extract_x0(
-            x_t,
-            epsilon_pred,
-            t,
-            sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
-            sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)
+        else:
+            raise ValueError(f"training mode {self.training.mode} is not supported. Please either use 'x_0' or 'epsilon'.")
         
         # pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
         # amt_loss = F.binary_cross_entropy(pred_roll, roll)
@@ -597,7 +617,7 @@ class SpecRollDiffusion(pl.LightningModule):
                 (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
                 self.sqrt_one_minus_alphas_cumprod[t_index-1] * epsilon)
             
-        return model_mean, spec       
+        return model_mean, spec
         
     def cfdg_ddpm(self, x, waveform, t_index):
         # x is Guassian noise

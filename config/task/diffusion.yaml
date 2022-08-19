@@ -7,8 +7,10 @@ frame_threshold: 0.6
 beta_start: 0.0001
 beta_end: 0.02
 norm_args:
-- -1
+- 0
 - 1
 - 'imagewise'
+training:
+    mode: 'x_0' # either 'x_0' or epsilon
 sampling:
-    type: 'ddpm'
+    type: 'ddim'

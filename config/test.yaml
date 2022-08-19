@@ -3,7 +3,7 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './'
-checkpoint_path: '/mnt/data/kin/amt_diffusion/outputs/2022-08-12/17-10-44/ClassifierFreeDiffRoll-cfdg_ddpm-L15-C512-beta0.05dilation1-l2-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-08-18/17-09-30/DiffRoll-ddim-L15-C512-beta0.02dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 dataset:
     test:

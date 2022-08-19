@@ -85,5 +85,5 @@ modelcheckpoint:
 
 defaults:
     - spec: mel
-    - model: ClassifierFreeDiffRoll
-    - task: classifierfree_diffusion
+    - model: DiffRoll
+    - task: diffusion

@@ -38,7 +38,7 @@ def main(cfg):
                f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-MAESTRO"        
     else:
         name = f"{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
-               f"beta{cfg.task.beta_end}" + \
+               f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
                f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
