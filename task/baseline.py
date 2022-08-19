@@ -213,7 +213,7 @@ class SpecRollBaseline(pl.LightningModule):
         x_t = torch.zeros_like(roll) # dummy noise
         
         pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
-        amt_loss = torch.nn.functional.binary_cross_entropy_with_logits(pred_roll, roll)
+        amt_loss = torch.nn.functional.mse_loss(pred_roll, roll)
         
         # pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
         # amt_loss = F.binary_cross_entropy(pred_roll, roll)
