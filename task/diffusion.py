@@ -587,9 +587,8 @@ class SpecRollDiffusion(pl.LightningModule):
         epsilon, spec = self(x, waveform, t_tensor)
         
         if t_index == 0:
-            model_mean = 1 * (
-                (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
-                1 * epsilon)    
+            model_mean = 
+                (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index] 
         else:
             model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * (
                 (x - self.sqrt_one_minus_alphas_cumprod[t_index] * epsilon) / self.sqrt_alphas_cumprod[t_index]) + (
