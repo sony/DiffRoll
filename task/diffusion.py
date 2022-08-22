@@ -315,7 +315,7 @@ class SpecRollDiffusion(pl.LightningModule):
     
         
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
-        roll_pred = noise_list[-1][0] # (B, 1, T, F)
+        roll_pred = noise_list[-1][0] # (B, 1, T, F)        
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
         if batch_idx==0:
@@ -412,6 +412,88 @@ class SpecRollDiffusion(pl.LightningModule):
             self.log("Test/Note_F1", f)         
         self.log("Test/Frame_F1", frame_f1)
         
+        
+#     def test_step(self, batch, batch_idx):
+#         """This is for directly predicting x0"""
+        
+#         batch_size = batch["frame"].shape[0]
+#         roll_label = self.normalize(batch["frame"]).unsqueeze(1)
+#         waveform = batch["audio"]
+#         device = roll_label.device
+#         # Algorithm 1 line 3: sample t uniformally for every example in the batch
+
+#         t_index=199
+#         t_tensor = torch.tensor(t_index).repeat(batch_size).to(device)
+        
+#         # Equation 11 in the paper
+#         noise = torch.randn_like(roll_label)
+#         roll_pred, spec = self(noise, waveform, t_tensor)
+        
+#         roll_pred = roll_pred.cpu()
+#         roll_label = roll_label.cpu()
+        
+#         if batch_idx==0:
+#             self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
+#                                   'Test/spec',
+#                                   batch_idx)                
+
+#             fig, ax = plt.subplots(2,2)
+#             fig1, ax1 = plt.subplots(2,2)
+#             fig2, ax2 = plt.subplots(2,2)
+#             for idx in range(4):
+#                 ax.flatten()[idx].imshow(roll_pred[idx][0].T.detach(), aspect='auto', origin='lower')
+#                 self.logger.experiment.add_figure(
+#                     f"Test/pred",
+#                     fig,
+#                     global_step=self.hparams.timesteps-t_index)                
+
+#                 ax1.flatten()[idx].imshow(roll_label[idx][0].T, aspect='auto', origin='lower')
+#                 self.logger.experiment.add_figure(
+#                     f"Test/label",
+#                     fig1,
+#                     global_step=0)
+
+#                 ax2.flatten()[idx].imshow((roll_pred[idx][0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
+#                 self.logger.experiment.add_figure(
+#                     f"Test/pred_roll",
+#                     fig2,
+#                     global_step=0)  
+#                 plt.close()            
+            
+            
+#         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
+#                                                                         roll_pred.flatten()>self.hparams.frame_threshold,
+#                                                                         average='binary')
+        
+#         for roll_pred_i, roll_label_i in zip(roll_pred.numpy(), roll_label.numpy()):
+#             # roll_pred (B, 1, T, F)
+#             p_est, i_est = extract_notes_wo_velocity(roll_pred_i[0],
+#                                                      roll_pred_i[0],
+#                                                      onset_threshold=self.hparams.frame_threshold,
+#                                                      frame_threshold=self.hparams.frame_threshold,
+#                                                      rule='rule1'
+#                                                     )
+            
+#             p_ref, i_ref = extract_notes_wo_velocity(roll_label_i[0],
+#                                                      roll_label_i[0],
+#                                                      onset_threshold=self.hparams.frame_threshold,
+#                                                      frame_threshold=self.hparams.frame_threshold,
+#                                                      rule='rule1'
+#                                                     )            
+            
+#             scaling = self.hparams.spec_args.hop_length / self.hparams.spec_args.sample_rate
+#             # scaling = HOP_LENGTH / SAMPLE_RATE
+
+#             # Converting time steps to seconds and midi number to frequency
+#             i_ref = (i_ref * scaling).reshape(-1, 2)
+#             p_ref = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_ref])
+#             i_est = (i_est * scaling).reshape(-1, 2)
+#             p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+
+#             p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)            
+        
+#             self.log("Test/Note_F1", f)         
+#         self.log("Test/Frame_F1", frame_f1)        
         
     def predict_step(self, batch, batch_idx): 
         if batch_idx==0:
@@ -560,9 +642,6 @@ class SpecRollDiffusion(pl.LightningModule):
         
         return noise_list, spec
         
-
-
-        
     def p_losses(self, label, prediction, loss_type="l1"):
         if loss_type == 'l1':
             loss = F.l1_loss(label, prediction)
@@ -588,8 +667,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
-        epsilon = self(x, waveform, t_tensor)[0]
-        spec = self(x, waveform, t_tensor)[1]
+        epsilon, spec = self(x, waveform, t_tensor)
         
         model_mean = sqrt_recip_alphas_t * (
             x - betas_t * epsilon / sqrt_one_minus_alphas_cumprod_t
@@ -602,6 +680,42 @@ class SpecRollDiffusion(pl.LightningModule):
             noise = torch.randn_like(x)
             # Algorithm 2 line 4:
             return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec
+        
+    def ddpm_x0(self, x, waveform, t_index):
+        # x is Guassian noise
+        
+        # extracting coefficients at time t
+        betas_t = self.betas[t_index]
+        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t_index]
+        sqrt_recip_alphas_t = self.sqrt_recip_alphas[t_index]
+
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean 
+        roll_predicted, spec = self(x, waveform, t_tensor)
+        
+        if t_index == 0:
+            return roll_predicted, spec
+        else:
+            noise = torch.randn_like(roll_predicted) # creating label noise
+
+            epsilon = q_sample( # sampling noise at time t
+                x_start=roll_predicted,
+                t=t_tensor,
+                sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
+                sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
+                noise=noise)
+
+            model_mean = sqrt_recip_alphas_t * (
+                x - betas_t * epsilon / sqrt_one_minus_alphas_cumprod_t
+            )            
+            # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
+            posterior_variance_t = self.posterior_variance[t_index]
+            noise = torch.randn_like(x)
+            # Algorithm 2 line 4:
+            return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec        
         
     def ddim(self, x, waveform, t_index):
         # boardcasting t_index into a tensor

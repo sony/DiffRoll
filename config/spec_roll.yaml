@@ -74,8 +74,8 @@ trainer:
     check_val_every_n_epoch: ${val_freq}
     
 modelcheckpoint:
-    monitor: 'Train/diffusion_loss'
-    filename: '{epoch:02d}e-diffusion_loss{Train/diffusion_loss:.2f}'
+    monitor: 'Train/amt_loss'
+    filename: '{epoch:02d}e-diffusion_loss{Train/amt_loss:.2f}'
     save_top_k: 2
     save_last: True
     mode: "min"

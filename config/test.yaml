@@ -3,7 +3,9 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './'
-checkpoint_path: './outputs/2022-08-18/17-09-30/DiffRoll-ddim-L15-C512-beta0.02dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-08-19/13-10-54/DiffRoll-ddim-L15-C512-beta0.02-x_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+
+# e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
 
 dataset:
     test:
@@ -29,7 +31,7 @@ dataloader:
 task:
     frame_threshold: null
     sampling:
-        type: 'ddim2ddpm'
+        type: 'ddpm_x0'
         
 trainer:
     gpus: ${gpus}
