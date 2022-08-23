@@ -35,7 +35,7 @@ def main(cfg):
     
     if cfg.model.name == 'DiffRollBaseline':
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
-               f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-MAESTRO"        
+               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-MAESTRO"        
     else:
         name = f"{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
