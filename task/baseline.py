@@ -19,12 +19,13 @@ class SpecRollBaseline(pl.LightningModule):
     def __init__(self,
                  lr,
                  timesteps,
-                 loss_type,
                  loss_keys,
                  beta_start,
                  beta_end,                 
                  frame_threshold,
                  norm_args,
+                 time_mode,
+                 x_t,
                  debug=False
                 ):
         super().__init__()
@@ -207,10 +208,17 @@ class SpecRollBaseline(pl.LightningModule):
         # t = torch.randint(0, self.hparams.timesteps, (1,), device=device)[0].long() # [0] to remove dimension
         # t_tensor = t.repeat(batch_size).to(roll.device)
         
-        t = torch.ones((batch_size,), device=device).long() # more diverse sampling
+        if self.hparams.time_mode == 'constant':
+            t = torch.ones((batch_size,), device=device).long() # more diverse sampling
+        elif self.hparams.time_mode == 'random':
+            t = torch.randint(low=0,high=100,size=(batch_size,)) # more diverse sampling
         
-
-        x_t = torch.zeros_like(roll) # dummy noise
+        if self.hparams.x_t == 'zeros':
+            x_t = torch.zeros_like(roll) # dummy noise
+        elif self.hparams.x_t == 'gaussian':
+            x_t = torch.rand_like(roll)
+        else:
+            raise ValueError(f'{self.hparams.x_t=} is not recognized')
         
         pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
         amt_loss = torch.nn.functional.mse_loss(pred_roll, roll)

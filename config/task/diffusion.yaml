@@ -1,11 +1,11 @@
 lr: ${learning_rate}
-timesteps: 200
+timesteps: 500
 loss_type: 'huber'
 loss_keys:
     - 'diffusion_loss'
 frame_threshold: 0.6
 beta_start: 0.0001
-beta_end: 0.02
+beta_end: 0.05
 norm_args:
 - 0
 - 1
@@ -13,4 +13,4 @@ norm_args:
 training:
     mode: 'x_0' # either 'x_0' or epsilon
 sampling:
-    type: 'ddpm'
+    type: 'ddpm_x0'
