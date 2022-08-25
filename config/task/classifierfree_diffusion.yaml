@@ -6,10 +6,8 @@ loss_keys:
 frame_threshold: 0
 beta_start: 0.0001
 beta_end: 0.02
-norm_args:
-- -1
-- 1
-- 'imagewise'
+training:
+    mode: 'x_0' # either 'x_0' or epsilon
 sampling:
     type: 'cfdg_ddpm'
     w: 4

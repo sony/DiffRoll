@@ -14,44 +14,7 @@ import numpy as np
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 MIN_MIDI = 21
-
-
-class Normalization():
-    """
-    This class is for normalizing the spectrograms batch by batch.
-    The normalization used is min-max, two modes 'framewise' and 'imagewise' can be selected.
-    In this paper, we found that 'imagewise' normalization works better than 'framewise'
-    
-    If framewise is used, then X must follow the shape of (B, F, T)
-    """
-    def __init__(self, min, max, mode='imagewise'):
-        if mode == 'framewise':
-            def normalize(x):
-                size = x.shape
-                x_max = x.max(1, keepdim=True)[0] # Finding max values for each frame
-                x_min = x.min(1, keepdim=True)[0]  
-                x_std = (x-x_min)/(x_max-x_min) # If there is a column with all zero, nan will occur
-                x_std[torch.isnan(x_std)]=0 # Making nan to 0
-                x_scaled = x_std * (max - min) + min
-                return x_scaled
-        elif mode == 'imagewise':
-            def normalize(x):
-                size = x.shape
-                x_max = x.view(size[0], size[1]*size[2]).max(1, keepdim=True)[0]
-                x_min = x.view(size[0], size[1]*size[2]).min(1, keepdim=True)[0]
-                x_max = x_max.unsqueeze(1) # Make it broadcastable
-                x_min = x_min.unsqueeze(1) # Make it broadcastable 
-                x_std = (x-x_min)/(x_max-x_min)
-                x_scaled = x_std * (max - min) + min
-                x_scaled[torch.isnan(x_scaled)]=min # if piano roll is empty, turn them to min
-                return x_scaled
-        else:
-            print(f'please choose the correct mode')
-        self.normalize = normalize
-
-    def __call__(self, x):
-        return self.normalize(x)
-
+# from model.utils import Normalization
 def linear_beta_schedule(beta_start, beta_end, timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
 
@@ -252,7 +215,6 @@ class SpecRollDiffusion(pl.LightningModule):
                  beta_start,
                  beta_end,                 
                  frame_threshold,
-                 norm_args,
                  training,
                  sampling,
                  debug=False
@@ -278,7 +240,6 @@ class SpecRollDiffusion(pl.LightningModule):
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.posterior_variance = self.betas * (1. - alphas_cumprod_prev) / (1- alphas_cumprod)
         self.inner_loop = tqdm(range(self.hparams.timesteps), desc='sampling loop time step')
-        self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])
         
         self.reverse_diffusion = getattr(self, sampling.type)
         self.alphas = alphas

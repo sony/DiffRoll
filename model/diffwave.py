@@ -20,7 +20,7 @@ import torch.nn.functional as F
 from task.diffusion import SpecRollDiffusion
 from task.baseline import SpecRollBaseline
 import torchaudio
-
+from model.utils import Normalization
 from math import sqrt
 
 
@@ -523,6 +523,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                  residual_channels,
                  unconditional,
                  n_mels,
+                 norm_args,
                  residual_layers = 30,
                  dilation_base = 1,
                  spec_args = {},
@@ -543,6 +544,8 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         self.spec_dropout = torch.nn.Dropout2d(spec_dropout) # for unconditional model
         nn.init.zeros_(self.output_projection.weight)
         
+        self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])        
+        
         if unconditional:
             self.mel_layer = None
         else:
@@ -556,6 +559,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         if self.mel_layer != None:
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
+            spec = self.normalize(spec)
             spec = self.spec_dropout(spec) # making some spec 0 to be unconditional
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:

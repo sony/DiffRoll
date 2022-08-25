@@ -9,5 +9,5 @@ norm_args:
 - -1
 - 1
 - 'imagewise'
-time_mode: 'random'
+time_mode: 'constant_maxT'
 x_t: 'gaussian'

@@ -6,3 +6,7 @@ args:
     residual_layers: 30
     dilation_base: 1
     spec_dropout: 0.5
+    norm_args:
+    - 0
+    - 1
+    - 'imagewise'    
