@@ -60,8 +60,6 @@ def q_sample(x_start, t, sqrt_alphas_cumprod, sqrt_one_minus_alphas_cumprod, noi
     x_start: x0 (B, 1, T, F)
     t: timestep information (B,)
     """    
-    
-    
     # sqrt_alphas is mean of the Gaussian N()    
     sqrt_alphas_cumprod_t = sqrt_alphas_cumprod[t]# extract the value of \bar{\alpha} at time=t
     # sqrt_alphas is variance of the Gaussian N()
