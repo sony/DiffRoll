@@ -210,8 +210,12 @@ class SpecRollBaseline(pl.LightningModule):
         
         if self.hparams.time_mode == 'constant':
             t = torch.ones((batch_size,), device=device).long() # more diverse sampling
+        if self.hparams.time_mode == 'constant_maxT':
+            t = torch.full((batch_size,), self.hparams.timesteps-1, device=device).long() # more diverse sampling            
         elif self.hparams.time_mode == 'random':
             t = torch.randint(low=0,high=100,size=(batch_size,)) # more diverse sampling
+        else:
+            raise ValueError(f'{self.hparams.time_mode=} is not recognized')            
         
         if self.hparams.x_t == 'zeros':
             x_t = torch.zeros_like(roll) # dummy noise
