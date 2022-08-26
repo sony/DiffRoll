@@ -531,6 +531,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                  spec_args = {},
                  spec_dropout = 0.5,
                  **kwargs):
+        self.spec_dropout = spec_dropout
         super().__init__(**kwargs)
         self.input_projection = Conv1d(88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
@@ -543,7 +544,6 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
         self.output_projection = Conv1d(residual_channels, 88, 1)
-        self.spec_dropout = torch.nn.Dropout2d(spec_dropout) # for unconditional model
         nn.init.zeros_(self.output_projection.weight)
         
         self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])        
@@ -562,7 +562,8 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
             spec = self.normalize(spec)
-            spec = self.spec_dropout(spec) # making some spec 0 to be unconditional
+            if self.training:
+                spec = dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
@@ -586,3 +587,9 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         x = F.relu(x)
         x = self.output_projection(x) #(B, F, T)
         return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)
+    
+    
+def dropout(x, p, masked_value=-1):
+    mask = torch.distributions.Bernoulli(probs=(1-p)).sample((x.shape[0],)).long()
+    x[mask] = masked_value
+    return x
