@@ -310,27 +310,28 @@ class SpecRollBaseline(pl.LightningModule):
         
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
-        roll_predicted, spec = self(x, waveform, t_tensor)
+        x0_pred, spec = self(x, waveform, t_tensor)
         
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean 
+        x0_pred, spec = self(x, waveform, t_tensor)
+
         if t_index == 0:
-            return roll_predicted, spec
+            sigma = (1/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))            
+            model_mean = x0_pred / self.sqrt_alphas_cumprod[t_index] 
         else:
-            noise = torch.randn_like(roll_predicted) # creating label noise
-            epsilon = q_sample( # sampling noise at time t
-                x_start=roll_predicted,
-                t=t_tensor,
-                sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
-                sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
-                noise=noise)
-            model_mean = sqrt_recip_alphas_t * (
-                x - betas_t * epsilon / sqrt_one_minus_alphas_cumprod_t
-            )
-            
-            # posterior_variance_t = extract(self.posterior_variance, t, x.shape)
-            posterior_variance_t = self.posterior_variance[t_index]
-            noise = torch.randn_like(epsilon)
-            # Algorithm 2 line 4:
-            return (model_mean + torch.sqrt(posterior_variance_t) * noise), spec
+            sigma = (self.sqrt_one_minus_alphas_cumprod[t_index-1]/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))                    
+            model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * x0_pred + (
+                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * (
+                    x-self.sqrt_alphas_cumprod[t_index]* x0_pred)/self.sqrt_one_minus_alphas_cumprod[t_index]) + (
+                sigma * torch.randn_like(x))
+
+        return model_mean, spec           
         
     def animate_sampling(self, t_idx, fig, ax_flat, caxs, noise_list):
         # Tuple of (x_t, t), (x_t-1, t-1), ... (x_0, 0)

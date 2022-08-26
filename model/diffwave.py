@@ -233,6 +233,7 @@ class DiffRoll(SpecRollDiffusion):
                  residual_channels,
                  unconditional,
                  n_mels,
+                 norm_args,
                  residual_layers = 30,
                  dilation_base = 1,
                  spec_args = {},
@@ -240,6 +241,7 @@ class DiffRoll(SpecRollDiffusion):
         super().__init__(**kwargs)
         self.input_projection = Conv1d(88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
+        self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])         
         
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
