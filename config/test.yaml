@@ -3,7 +3,7 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './'
-checkpoint_path: './outputs/2022-08-24/11-48-06/DiffRollBaseline-L15-C512-t=constant_maxT-x_t=gaussian-MAESTRO//version_1/checkpoints/last.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-08-26/18-27-02/ClassifierFreeDiffRoll-cfdg_ddpm-L30-C256-beta0.02-x_0-dilation1-l2-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
 
@@ -29,9 +29,10 @@ dataloader:
         pin_memory: True
         
 task:
-    frame_threshold: null
+    frame_threshold: 0.5
     sampling:
-        type: null
+        type: 'cfdg_ddpm_x0'
+        w: 4
         
 trainer:
     gpus: ${gpus}
