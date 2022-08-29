@@ -3,7 +3,7 @@ timesteps: 200
 loss_type: 'l2'
 loss_keys:
     - 'diffusion_loss'
-frame_threshold: 0
+frame_threshold: 0.5
 beta_start: 0.0001
 beta_end: 0.02
 training:

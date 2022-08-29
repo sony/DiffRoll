@@ -590,6 +590,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
     
     
 def dropout(x, p, masked_value=-1):
-    mask = torch.distributions.Bernoulli(probs=(1-p)).sample((x.shape[0],)).long()
-    x[mask] = masked_value
+    mask = torch.distributions.Bernoulli(probs=(p)).sample((x.shape[0],)).long()
+    mask_idx = mask.nonzero()
+    x[mask_idx] = masked_value
     return x
