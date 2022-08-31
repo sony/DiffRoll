@@ -33,7 +33,7 @@ def main(cfg):
     else:
         model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
-    name = f"Test-{cfg.model.name}-" \
+    name = f"Test-x0_pred_0-{cfg.model.name}-" \
            f"{cfg.task.sampling.type}-MAESTRO"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
