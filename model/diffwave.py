@@ -524,6 +524,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
     def __init__(self,
                  residual_channels,
                  unconditional,
+                 condition,
                  n_mels,
                  norm_args,
                  residual_layers = 30,
@@ -536,6 +537,19 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         self.input_projection = Conv1d(88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
         
+        if condition == 'trainable_spec':
+            trainable_parameters = torch.randn(spec_args.n_mels,641) # TODO: makes it automatic later
+            trainable_parameters = nn.Parameter(trainable_parameters, requires_grad=True)
+            self.register_parameter("trainable_parameters", trainable_parameters)
+            self.uncon_dropout = self.trainable_dropout
+            
+        elif condition == 'fixed':
+            self.uncon_dropout = self.fixed_dropout
+        else:
+            raise ValueError("unrecognized condition '{condition}'")
+            
+        
+        
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
@@ -547,11 +561,8 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         nn.init.zeros_(self.output_projection.weight)
         
         self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])        
-        
-        if unconditional:
-            self.mel_layer = None
-        else:
-            self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
+
+        self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
     def forward(self, x_t, waveform, diffusion_step):
         # roll (B, 1, T, F)
@@ -563,7 +574,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             spec = torch.log(spec+1e-6)
             spec = self.normalize(spec)
             if self.training:
-                spec = dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
+                spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
@@ -589,8 +600,14 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         return x.transpose(1,2).unsqueeze(1), spectrogram #(B, T, F)
     
     
-def dropout(x, p, masked_value=-1):
-    mask = torch.distributions.Bernoulli(probs=(p)).sample((x.shape[0],)).long()
-    mask_idx = mask.nonzero()
-    x[mask_idx] = masked_value
-    return x
+    def fixed_dropout(self, x, p, masked_value=-1):
+        mask = torch.distributions.Bernoulli(probs=(p)).sample((x.shape[0],)).long()
+        mask_idx = mask.nonzero()
+        x[mask_idx] = masked_value
+        return x
+    
+    def trainable_dropout(self, x, p):
+        mask = torch.distributions.Bernoulli(probs=(p)).sample((x.shape[0],)).long()
+        mask_idx = mask.nonzero()
+        x[mask_idx] = self.trainable_parameters
+        return x        

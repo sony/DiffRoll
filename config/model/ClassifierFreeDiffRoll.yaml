@@ -2,6 +2,7 @@ name: 'ClassifierFreeDiffRoll'
 args:
     residual_channels: 512
     unconditional: False
+    condition: 'trainable_spec' # either trainable_spec or trainable_z
     n_mels: ${spec.args.n_mels}
     residual_layers: 15
     dilation_base: 1
