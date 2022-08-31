@@ -263,6 +263,14 @@ class SpecRollDiffusion(pl.LightningModule):
         
         if batch_idx == 0:
             self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
+            
+            if hasattr(self.hparams, 'condition'): # the condition for classifier free
+                fig, ax = plt.subplots(1,1)
+                im = ax.imshow(self.trainable_parameters.detach().cpu(), aspect='auto', origin='lower', cmap='jet')
+                fig.colorbar(im, orientation='vertical')
+                self.logger.experiment.add_figure(f"Val/trainable_uncon", fig, global_step=self.current_epoch)
+                plt.close()
+            
             if self.current_epoch == 0: 
                 self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
                 if self.hparams.unconditional==False and tensors['spec']!=None:
