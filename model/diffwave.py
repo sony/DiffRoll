@@ -538,7 +538,8 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         self.diffusion_embedding = DiffusionEmbedding(len(self.betas))
         
         if condition == 'trainable_spec':
-            trainable_parameters = torch.randn(spec_args.n_mels,641) # TODO: makes it automatic later
+            trainable_parameters = torch.full((spec_args.n_mels,641), -1).float() # TODO: makes it automatic later
+            
             trainable_parameters = nn.Parameter(trainable_parameters, requires_grad=True)
             self.register_parameter("trainable_parameters", trainable_parameters)
             self.uncon_dropout = self.trainable_dropout
