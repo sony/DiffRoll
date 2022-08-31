@@ -141,6 +141,49 @@ class ResidualBlock(nn.Module):
         residual, skip = torch.chunk(y, 2, dim=1)
         return (x + residual) / sqrt(2.0), skip
     
+class ResidualBlockz(nn.Module):
+    def __init__(self, n_mels, residual_channels, dilation, uncond=False):
+        '''
+        :param n_mels: inplanes of conv1x1 for spectrogram conditional
+        :param residual_channels: audio conv
+        :param dilation: audio conv dilation
+        :param uncond: disable spectrogram conditional
+        '''
+        super().__init__()
+        self.dilated_conv = Conv1d(residual_channels, 2 * residual_channels, 3, padding=dilation, dilation=dilation)
+        self.diffusion_projection = Linear(512, residual_channels)
+        if not uncond: # conditional model
+            self.conditioner_projection = Conv1d(n_mels, 2 * residual_channels, 1)
+            uncon_z = torch.empty(2 * residual_channels, 640)
+            uncon_z = nn.Parameter(uncon_z, requires_grad=True)
+            self.register_parameter("uncon_z", uncon_z)          
+        else: # unconditional model
+            self.conditioner_projection = None
+            
+        self.output_projection = Conv1d(residual_channels, 2 * residual_channels, 1)
+
+    def forward(self, x, diffusion_step, conditioner=None):
+        assert (conditioner is None and self.conditioner_projection is None) or \
+               (conditioner is not None and self.conditioner_projection is not None)
+
+        diffusion_step = self.diffusion_projection(diffusion_step).unsqueeze(-1)
+        y = x + diffusion_step
+        if self.conditioner_projection is None: # using a unconditional model
+            y = self.dilated_conv(y)
+        else:
+            uncon_mask = conditioner.flatten(1).mean(1) == -1
+            conditioner = self.conditioner_projection(conditioner)
+            if uncon_mask.sum() != 0: # there are cases without dropout
+                conditioner[uncon_mask] = self.uncon_z # overwritting z for unconditional spec
+            y = self.dilated_conv(y) + conditioner
+
+        gate, filter = torch.chunk(y, 2, dim=1)
+        y = torch.sigmoid(gate) * torch.tanh(filter)
+
+        y = self.output_projection(y)
+        residual, skip = torch.chunk(y, 2, dim=1)
+        return (x + residual) / sqrt(2.0), skip    
+    
 class ResidualBlockv2(nn.Module):
     def __init__(self, n_mels, residual_channels, dilation, uncond=False):
         '''
@@ -542,9 +585,9 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             
             trainable_parameters = nn.Parameter(trainable_parameters, requires_grad=True)
             self.register_parameter("trainable_parameters", trainable_parameters)
-            self.uncon_dropout = self.trainable_dropout
+            self.uncon_dropout = self.trainable_dropout        
             
-        elif condition == 'fixed':
+        elif condition == 'fixed' or 'trainable_z':
             self.uncon_dropout = self.fixed_dropout
         else:
             raise ValueError("unrecognized condition '{condition}'")
@@ -553,10 +596,18 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
-        self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
-            for i in range(residual_layers)
-        ])
+        if condition == 'trainable_z':
+            print(f"================trainable_z layers=================")
+            self.residual_layers = nn.ModuleList([
+                ResidualBlockz(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+                for i in range(residual_layers)
+            ])            
+        else:
+            self.residual_layers = nn.ModuleList([
+                ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+                for i in range(residual_layers)
+            ])
+            
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
         self.output_projection = Conv1d(residual_channels, 88, 1)
         nn.init.zeros_(self.output_projection.weight)

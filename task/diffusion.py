@@ -265,11 +265,20 @@ class SpecRollDiffusion(pl.LightningModule):
             self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
             
             if hasattr(self.hparams, 'condition'): # the condition for classifier free
-                fig, ax = plt.subplots(1,1)
-                im = ax.imshow(self.trainable_parameters.detach().cpu(), aspect='auto', origin='lower', cmap='jet')
-                fig.colorbar(im, orientation='vertical')
-                self.logger.experiment.add_figure(f"Val/trainable_uncon", fig, global_step=self.current_epoch)
-                plt.close()
+                if self.hparams.condition == 'trainable_spec':
+                    fig, ax = plt.subplots(1,1)
+                    im = ax.imshow(self.trainable_parameters.detach().cpu(), aspect='auto', origin='lower', cmap='jet')
+                    fig.colorbar(im, orientation='vertical')
+                    self.logger.experiment.add_figure(f"Val/trainable_uncon", fig, global_step=self.current_epoch)
+                    plt.close()
+                
+                # if self.hparams.condition == 'trainable_z':
+                #     for idx, res_layer in enumerate(self.residual_layers):
+                #         fig, ax = plt.subplots(1,1)
+                #         im = ax.imshow(res_layer.uncon_z.detach().cpu(), aspect='auto', origin='lower', cmap='jet')
+                #         fig.colorbar(im, orientation='vertical')
+                #         self.logger.experiment.add_figure(f"Val/trainable_z{idx}", fig, global_step=self.current_epoch)
+                #         plt.close()                        
             
             if self.current_epoch == 0: 
                 self.visualize_figure(tensors['label_roll'], 'Val/label_roll', batch_idx)
