@@ -616,7 +616,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
 
         self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
-    def forward(self, x_t, waveform, diffusion_step):
+    def forward(self, x_t, waveform, diffusion_step, sampling=False):
         # roll (B, 1, T, F)
         # waveform (B, L)
         x_t = x_t.squeeze(1).transpose(1,2)
@@ -630,6 +630,9 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
+            
+        if sampling==True:
+            spectrogram = torch.full_like(spectrogram, -1)
         x = self.input_projection(x_t)
         x = F.relu(x)
 
