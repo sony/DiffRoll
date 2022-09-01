@@ -783,8 +783,8 @@ class SpecRollDiffusion(pl.LightningModule):
         # Use our model (noise predictor) to predict the mean 
         x0_pred_c, spec = self(x, waveform, t_tensor)
         x0_pred_0, _ = self(x, torch.zeros_like(waveform), t_tensor)
-        # x0_pred = (1+self.hparams.sampling.w)*x0_pred_c - self.hparams.sampling.w*x0_pred_0
-        x0_pred = x0_pred_c
+        x0_pred = (1+self.hparams.sampling.w)*x0_pred_c - self.hparams.sampling.w*x0_pred_0
+#         x0_pred = x0_pred_c
         # x0_pred = x0_pred_0
 
         if t_index == 0:
@@ -816,8 +816,8 @@ class SpecRollDiffusion(pl.LightningModule):
         # Use our model (noise predictor) to predict the mean 
         x0_pred_c, spec = self(x, waveform, t_tensor)
         x0_pred_0, _ = self(x, torch.zeros_like(waveform), t_tensor)
-        # x0_pred = (1+self.hparams.sampling.w)*x0_pred_c - self.hparams.sampling.w*x0_pred_0
-        x0_pred = x0_pred_c
+        x0_pred = (1+self.hparams.sampling.w)*x0_pred_c - self.hparams.sampling.w*x0_pred_0
+#         x0_pred = x0_pred_c
         # x0_pred = x0_pred_0
 
         if t_index == 0:
