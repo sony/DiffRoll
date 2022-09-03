@@ -11,15 +11,15 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from AudioLoader.music.amt import MAPS, MAESTRO
+import AudioLoader.music.amt as MusicDataset
 
 @hydra.main(config_path="config", config_name="spec_roll")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
     
-    train_set = MAESTRO(**cfg.dataset.train)
-    val_set = MAESTRO(**cfg.dataset.val)
-    test_set = MAESTRO(**cfg.dataset.test)
+    train_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.train)
+    val_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.val)
+    test_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.test)
         
     train_loader = DataLoader(train_set, **cfg.dataloader.train)
     val_loader = DataLoader(val_set, **cfg.dataloader.val)

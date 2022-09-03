@@ -2,8 +2,8 @@ gpus: 1
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
-data_root: './'
-checkpoint_path: './outputs/2022-08-26/18-27-02/ClassifierFreeDiffRoll-cfdg_ddpm-L30-C256-beta0.02-x_0-dilation1-l2-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+data_root: '/workspace/public_data/MusicDataset'
+checkpoint_path: './multirun/2022-08-29/15-44-22/0/ClassifierFreeDiffRoll-L15-C512-beta0.02-x_0-cfdg_ddpm_x0-w=4-p=0.5-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
 
@@ -32,7 +32,7 @@ task:
     frame_threshold: 0.5
     sampling:
         type: 'cfdg_ddpm_x0'
-        w: 4
+        w: 1.5 # 0.1 0.5 1
         
 trainer:
     gpus: ${gpus}
