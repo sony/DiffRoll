@@ -33,9 +33,14 @@ def main(cfg):
     else:
         model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path))
     
-    name = f"Test-x0_pred_0-{cfg.model.name}-" \
-           f"{cfg.task.sampling.type}-MAESTRO"
-    logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
+    if cfg.model.name=='ClassifierFreeDiffRoll':
+        name = f"Test-x0_pred_0-{cfg.model.name}-" \
+               f"{cfg.task.sampling.type}-w{cfg.task.sampling.w}-MAESTRO"
+        logger = TensorBoardLogger(save_dir=".", version=1, name=name)        
+    else:
+        name = f"Test-x0_pred_0-{cfg.model.name}-" \
+               f"{cfg.task.sampling.type}-MAESTRO"
+        logger = TensorBoardLogger(save_dir=".", version=1, name=name)
 
     trainer = pl.Trainer(**cfg.trainer,
                          logger=logger)
