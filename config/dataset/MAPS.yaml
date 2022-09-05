@@ -11,12 +11,13 @@ train:
     max_midi: 108
     min_midi: 21
     ext_audio: '.wav'
-    sampling_rate: 16000    
+    sampling_rate: 16000
+    overlap: False
 val:
     root: ${data_root} 
     groups: 'test'
     data_type: 'MUS'
-    download: False
+    download: True
     preload: False
     sequence_length: ${sequence_length}
     seed: 42
@@ -25,6 +26,7 @@ val:
     min_midi: 21
     ext_audio: '.wav'
     sampling_rate: 16000
+    overlap: True
 
 test:
     root: ${data_root} 
@@ -39,3 +41,4 @@ test:
     min_midi: 21
     ext_audio: '.wav'
     sampling_rate: 16000
+    overlap: True

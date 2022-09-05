@@ -6,7 +6,7 @@ args:
     n_mels: ${spec.args.n_mels}
     residual_layers: 15
     dilation_base: 1
-    spec_dropout: 0.2
+    spec_dropout: 0.1
     norm_args:
     - 0
     - 1

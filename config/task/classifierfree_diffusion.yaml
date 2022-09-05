@@ -10,4 +10,4 @@ training:
     mode: 'x_0' # either 'x_0' or epsilon
 sampling:
     type: 'cfdg_ddpm_x0'
-    w: 0.1
+    w: 0
