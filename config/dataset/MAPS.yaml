@@ -17,7 +17,7 @@ val:
     root: ${data_root} 
     groups: 'test'
     data_type: 'MUS'
-    download: True
+    download: ${download}
     preload: False
     sequence_length: ${sequence_length}
     seed: 42

@@ -35,16 +35,16 @@ def main(cfg):
     
     if cfg.model.name == 'DiffRollBaseline':
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
-               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-MAESTRO"
+               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-{cfg.dataset.name}"
     elif cfg.model.name == 'ClassifierFreeDiffRoll':
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
                f"{cfg.task.sampling.type}-w={cfg.task.sampling.w}-" + \
-               f"p={cfg.model.args.spec_dropout}-MAESTRO"             
+               f"p={cfg.model.args.spec_dropout}-{cfg.dataset.name}"             
     else:
         name = f"{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
-               f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-MAESTRO"
+               f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-{cfg.dataset.name}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
 
     trainer = pl.Trainer(**cfg.trainer,
