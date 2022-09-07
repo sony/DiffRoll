@@ -587,7 +587,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             self.register_parameter("trainable_parameters", trainable_parameters)
             self.uncon_dropout = self.trainable_dropout        
             
-        elif condition == 'fixed' or 'trainable_z':
+        elif condition == 'fixed' or condition == 'trainable_z':
             self.uncon_dropout = self.fixed_dropout
         else:
             raise ValueError("unrecognized condition '{condition}'")
@@ -625,14 +625,20 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
             spec = self.normalize(spec)
-            if self.training:
+            if self.training: # only use dropout druing training
                 spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
+                
+            if sampling==True:
+                if self.hparams.condition == 'trainable_spec':
+                    spectrogram = self.trainable_parameters
+                elif self.hparams.condition == 'trainable_z' or self.hparams.condition == 'fixed':
+                    spectrogram = torch.full_like(spec, -1)                
+                    
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
             
-        if sampling==True:
-            spectrogram = torch.full_like(spectrogram, -1)
+
         x = self.input_projection(x_t)
         x = F.relu(x)
 
