@@ -1,0 +1,60 @@
+name1: 'MAPS'
+train1:
+    root: ${data_root} 
+    groups: ['AkPnBcht']
+    data_type: 'MUS'
+    download: ${download}
+    preload: False
+    sequence_length: ${sequence_length}
+    seed: 42
+    hop_length: ${hop_length}
+    max_midi: 108
+    min_midi: 21
+    ext_audio: '.wav'
+    sampling_rate: 16000
+    overlap: False
+
+name2: 'MAESTRO'
+train2:
+    root: ${data_root} 
+    groups: 'train'            
+    download: ${download}
+    preload: False
+    sequence_length: ${sequence_length}
+    seed: 42
+    hop_length: ${hop_length}
+    max_midi: 108
+    min_midi: 21
+    ext_audio: '.wav'
+    sampling_rate: 16000 
+
+name: 'MAPS'
+val:
+    root: ${data_root} 
+    groups: 'test'
+    data_type: 'MUS'
+    download: ${download}
+    preload: False
+    sequence_length: ${sequence_length}
+    seed: 42
+    hop_length: ${hop_length}
+    max_midi: 108
+    min_midi: 21
+    ext_audio: '.wav'
+    sampling_rate: 16000
+    overlap: True
+
+test:
+    root: ${data_root} 
+    groups: 'test'
+    data_type: 'MUS'
+    download: False
+    preload: False
+    sequence_length: ${sequence_length}
+    seed: 42
+    hop_length: ${hop_length}
+    max_midi: 108
+    min_midi: 21
+    ext_audio: '.wav'
+    sampling_rate: 16000
+    overlap: True

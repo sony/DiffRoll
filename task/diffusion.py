@@ -245,6 +245,7 @@ class SpecRollDiffusion(pl.LightningModule):
         self.alphas = alphas
 
     def training_step(self, batch, batch_idx):
+        torch.save(batch, 'batch.pt')
         losses, tensors = self.step(batch)
         self.log("Train/diffusion_loss", losses['diffusion_loss'])
         # self.log("Train/amt_loss", losses['amt_loss'])
@@ -517,11 +518,18 @@ class SpecRollDiffusion(pl.LightningModule):
     def step(self, batch):
         # batch["frame"] (B, 640, 88)
         # batch["audio"] (B, L)
-        
-        batch_size = batch["frame"].shape[0]
-        roll = self.normalize(batch["frame"]).unsqueeze(1) 
-        waveform = batch["audio"]
-        device = roll.device
+        if isinstance(batch, list):
+            batch_size = batch[0]["frame"].shape[0]
+            roll = self.normalize(batch[0]["frame"]).unsqueeze(1) 
+            waveform = batch[0]["audio"]
+            roll2 = self.normalize(batch[1]["frame"]).unsqueeze(1) 
+            waveform2 = batch[1]["audio"]
+            device = roll.device            
+        else:
+            batch_size = batch["frame"].shape[0]
+            roll = self.normalize(batch["frame"]).unsqueeze(1) 
+            waveform = batch["audio"]
+            device = roll.device
         
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
         ## sampling the same t within each batch, might not work well
@@ -560,6 +568,8 @@ class SpecRollDiffusion(pl.LightningModule):
         elif self.hparams.training.mode == 'x_0':
             pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
             diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)
+            if isinstance(batch, list): # when using multiple dataset do one more feedforward
+                pred_roll, spec = self(x_t, waveform, t, sampling=True) # sampling = True
             
         elif self.hparams.training.mode == 'ex_0':
             epsilon_pred, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
