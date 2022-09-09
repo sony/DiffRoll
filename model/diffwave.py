@@ -630,10 +630,10 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                 
             if sampling==True:
                 if self.hparams.condition == 'trainable_spec':
-                    spectrogram = self.trainable_parameters
+                    spec = self.trainable_parameters
                 elif self.hparams.condition == 'trainable_z' or self.hparams.condition == 'fixed':
-                    spectrogram = torch.full_like(spec, -1)                
-                    
+                    spec = torch.full_like(spec, -1)
+
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
