@@ -1,5 +1,5 @@
 gpus: 1
-val_freq: 5
+val_freq: 100
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
@@ -15,17 +15,17 @@ pretrained_path: './weights/MAESTRO_pretrained.ckpt'
 dataloader:
     train:
         batch_size: 16
-        num_workers: 20 
+        num_workers: 0 
         shuffle: True
         pin_memory: ${pin_memory}
     val:
         batch_size: 16
-        num_workers: 8
+        num_workers: 0
         shuffle: False
         pin_memory: ${pin_memory}
     test:
         batch_size: 4
-        num_workers: 8
+        num_workers: 0
         shuffle: False
         pin_memory: ${pin_memory}
         
