@@ -14,6 +14,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 import AudioLoader.music.amt as MusicDataset
 from omegaconf import OmegaConf
 
+
 @hydra.main(config_path="config", config_name="unsupervised_pretrained")
 def main(cfg):
     cfg.data_root = to_absolute_path(cfg.data_root)
@@ -21,13 +22,15 @@ def main(cfg):
     cfg.dataset.train = OmegaConf.to_container(cfg.dataset.train, resolve=True) # convert Omega list into python list
     # Otherwise groups argument won't work in MAPS dataset
     
-    train_set = getattr(MusicDataset, cfg.dataset.name)(**OmegaConf.to_container(cfg.dataset.train))
+    train_set = getattr(MusicDataset, cfg.dataset.name)(**OmegaConf.to_container(cfg.dataset.train, resolve=True))
     val_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.val)
     test_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.test)
         
     train_loader = DataLoader(train_set, **cfg.dataloader.train)
     val_loader = DataLoader(val_set, **cfg.dataloader.val)
     test_loader = DataLoader(test_set, **cfg.dataloader.test)
+    
+    
 
     # Model
     model = getattr(Model, cfg.model.name).load_from_checkpoint(checkpoint_path=cfg.pretrained_path,\
