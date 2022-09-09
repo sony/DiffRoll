@@ -245,15 +245,15 @@ class SpecRollDiffusion(pl.LightningModule):
         self.alphas = alphas
 
     def training_step(self, batch, batch_idx):
-        torch.save(batch, 'batch.pt')
         losses, tensors = self.step(batch)
-        self.log("Train/diffusion_loss", losses['diffusion_loss'])
+
         # self.log("Train/amt_loss", losses['amt_loss'])
         
         # calculating total loss based on keys give
         total_loss = 0
         for k in self.hparams.loss_keys:
             total_loss += losses[k]
+            self.log(f"Train/{k}", losses[k])            
             
         return total_loss
     
@@ -569,7 +569,16 @@ class SpecRollDiffusion(pl.LightningModule):
             pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
             diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)
             if isinstance(batch, list): # when using multiple dataset do one more feedforward
-                pred_roll, spec = self(x_t, waveform, t, sampling=True) # sampling = True
+                noise2 = torch.randn_like(roll2) # creating label noise
+
+                x_t2 = q_sample( # sampling noise at time t
+                    x_start=roll2,
+                    t=t,
+                    sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
+                    sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
+                    noise=noise2)                
+                pred_roll2, spec2 = self(x_t2, waveform2, t, sampling=True) # sampling = True
+                unconditional_diffusion_loss = self.p_losses(roll2, pred_roll2, loss_type=self.hparams.loss_type)
             
         elif self.hparams.training.mode == 'ex_0':
             epsilon_pred, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
@@ -590,6 +599,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         losses = {
             "diffusion_loss": diffusion_loss,
+            'unconditional_diffusion_loss': unconditional_diffusion_loss
             # "amt_loss": amt_loss
         }
         

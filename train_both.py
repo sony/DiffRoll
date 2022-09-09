@@ -52,15 +52,17 @@ def main(cfg):
     # Otherwise groups argument won't work in MAPS dataset
     train_set1 = getattr(MusicDataset, cfg.dataset.name1)(**OmegaConf.to_container(cfg.dataset.train1, resolve=True))
     train_set2 = getattr(MusicDataset, cfg.dataset.name2)(**cfg.dataset.train2)
-    concat_dataset = DoubleDataset(train_set1, train_set2)
+    concat_trainset = DoubleDataset(train_set1, train_set2)
     
-    torch.save(concat_dataset, 'concat_dataset.pt')
+    val_set1 = getattr(MusicDataset, cfg.dataset.name1)(**cfg.dataset.val1)
+    val_set2 = getattr(MusicDataset, cfg.dataset.name2)(**cfg.dataset.val2)
+    concat_valset = DoubleDataset(val_set1, val_set2)
     
-    val_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.val)
-    test_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.test)
+    test_set = getattr(MusicDataset, cfg.dataset.name1)(**cfg.dataset.test)
+    
         
-    train_loader = DataLoader(concat_dataset, **cfg.dataloader.train)
-    val_loader = DataLoader(val_set, **cfg.dataloader.val)
+    train_loader = DataLoader(concat_trainset, **cfg.dataloader.train)
+    val_loader = DataLoader(concat_valset, **cfg.dataloader.val)
     test_loader = DataLoader(test_set, **cfg.dataloader.test)
     
     
@@ -70,17 +72,17 @@ def main(cfg):
                                                                 **cfg.model.args, spec_args=cfg.spec.args, **cfg.task)
     
     if cfg.model.name == 'DiffRollBaseline':
-        name = f"Pretrained-{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
-               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-{cfg.dataset.name}"
+        name = f"BothPretrained-{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
+               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-{cfg.dataset.name1}"
     elif cfg.model.name == 'ClassifierFreeDiffRoll':
-        name = f"Pretrained-{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
+        name = f"BothPretrained-{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
                f"{cfg.task.sampling.type}-w={cfg.task.sampling.w}-" + \
-               f"p={cfg.model.args.spec_dropout}-{cfg.dataset.name}"             
+               f"p={cfg.model.args.spec_dropout}-{cfg.dataset.name1}"             
     else:
-        name = f"Pretrained-{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
+        name = f"BothPretrained-{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
-               f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-{cfg.dataset.name}"    
+               f"dilation{cfg.model.args.dilation_base}-{cfg.task.loss_type}-{cfg.dataset.name1}"    
 
     optimizer = Adam(model.parameters(), lr=1e-3)
     

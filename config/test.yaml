@@ -3,23 +3,9 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: '/workspace/public_data/MusicDataset'
-checkpoint_path: './multirun/2022-08-29/15-44-22/0/ClassifierFreeDiffRoll-L15-C512-beta0.02-x_0-cfdg_ddpm_x0-w=4-p=0.5-MAESTRO/version_1/checkpoints/last.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-09-08/11-00-10/Pretrained-ClassifierFreeDiffRoll-L15-C512-beta0.02-x_0-cfdg_ddpm_x0-w=0-p=0.1-MAPS/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
-
-dataset:
-    test:
-        root: ${data_root} 
-        groups: 'test'            
-        download: False
-        preload: False
-        sequence_length: ${sequence_length}
-        seed: 42
-        hop_length: ${hop_length}
-        max_midi: 108
-        min_midi: 21
-        ext_audio: '.wav'
-        sampling_rate: 16000
         
 dataloader:
     test:
@@ -32,10 +18,11 @@ task:
     frame_threshold: 0.5
     sampling:
         type: 'cfdg_ddpm_x0'
-        w: 1.5 # 0.1 0.5 1
+        w: 0.5 # 0.1 0.5 1
         
 trainer:
     gpus: ${gpus}
     
 defaults:
     - model: ClassifierFreeDiffRoll
+    - dataset: MAPS
