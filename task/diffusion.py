@@ -606,7 +606,7 @@ class SpecRollDiffusion(pl.LightningModule):
         noise_list.append((noise, self.hparams.timesteps))
 
         for t_index in reversed(range(0, self.hparams.timesteps)):
-            if self.hparams.debug==True:                   
+            if self.hparams.debug==True:
                 noise, spec = self.reverse_diffusion(noise, roll, t_index)
             else:
                 noise, spec = self.reverse_diffusion(noise, waveform, t_index)
@@ -774,10 +774,6 @@ class SpecRollDiffusion(pl.LightningModule):
         
         # boardcasting t_index into a tensor
         t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
-
-        # Equation 11 in the paper
-        # Use our model (noise predictor) to predict the mean 
-        x0_pred, spec = self(x, waveform, t_tensor)
         
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
