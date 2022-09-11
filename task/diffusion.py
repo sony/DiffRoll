@@ -259,7 +259,10 @@ class SpecRollDiffusion(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
-        self.log("Val/diffusion_loss", losses['diffusion_loss'])
+        total_loss = 0
+        for k in self.hparams.loss_keys:
+            total_loss += losses[k]
+            self.log(f"Val/{k}", losses[k])           
         # self.log("Val/amt_loss", losses['amt_loss'])
         
         if batch_idx == 0:
@@ -272,6 +275,7 @@ class SpecRollDiffusion(pl.LightningModule):
                     fig.colorbar(im, orientation='vertical')
                     self.logger.experiment.add_figure(f"Val/trainable_uncon", fig, global_step=self.current_epoch)
                     plt.close()
+                                      
                 
                 # if self.hparams.condition == 'trainable_z':
                 #     for idx, res_layer in enumerate(self.residual_layers):
@@ -287,6 +291,13 @@ class SpecRollDiffusion(pl.LightningModule):
                     self.visualize_figure(tensors['spec'].transpose(-1,-2).unsqueeze(1),
                                           'Val/spec',
                                           batch_idx)
+                    
+                if isinstance(batch, list):
+                    self.visualize_figure(tensors['spec2'].transpose(-1,-2).unsqueeze(1),
+                                          'Val/spec2',
+                                          batch_idx)
+                    self.visualize_figure(tensors['pred_roll2'], 'Val/pred_roll2', batch_idx)
+                    self.visualize_figure(tensors['label_roll2'], 'Val/label_roll2', batch_idx)
     def test_step(self, batch, batch_idx):
         noise_list, spec = self.sampling(batch, batch_idx)
     
@@ -512,7 +523,7 @@ class SpecRollDiffusion(pl.LightningModule):
         for idx in range(4): # visualize only 4 piano rolls
             # roll_pred (1, T, F)
             ax.flatten()[idx].imshow(tensors[idx][0].T.cpu(), aspect='auto', origin='lower')
-        self.logger.experiment.add_figure(f"{tag}{idx}", fig, global_step=self.current_epoch)
+        self.logger.experiment.add_figure(f"{tag}", fig, global_step=self.current_epoch)
         plt.close()
         
     def step(self, batch):
@@ -569,14 +580,13 @@ class SpecRollDiffusion(pl.LightningModule):
             pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
             diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)
             if isinstance(batch, list): # when using multiple dataset do one more feedforward
-                noise2 = torch.randn_like(roll2) # creating label noise
 
                 x_t2 = q_sample( # sampling noise at time t
                     x_start=roll2,
                     t=t,
                     sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
                     sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
-                    noise=noise2)                
+                    noise=noise)                
                 pred_roll2, spec2 = self(x_t2, waveform2, t, sampling=True) # sampling = True
                 unconditional_diffusion_loss = self.p_losses(roll2, pred_roll2, loss_type=self.hparams.loss_type)
             
@@ -603,11 +613,21 @@ class SpecRollDiffusion(pl.LightningModule):
             # "amt_loss": amt_loss
         }
         
-        tensors = {
-            "pred_roll": pred_roll,
-            "label_roll": roll,
-            "spec": spec
-        }
+        if isinstance(batch, list):
+            tensors = {
+                "pred_roll": pred_roll,
+                "label_roll": roll,
+                "spec": spec,
+                "spec2": spec2,
+                "label_roll2": roll2,
+                "pred_roll2": pred_roll2,
+            }            
+        else:
+            tensors = {
+                "pred_roll": pred_roll,
+                "label_roll": roll,
+                "spec": spec
+            }
         
         return losses, tensors
     
