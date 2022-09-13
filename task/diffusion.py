@@ -607,11 +607,7 @@ class SpecRollDiffusion(pl.LightningModule):
         # pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
         # amt_loss = F.binary_cross_entropy(pred_roll, roll)
         
-        losses = {
-            "diffusion_loss": diffusion_loss,
-            'unconditional_diffusion_loss': unconditional_diffusion_loss
-            # "amt_loss": amt_loss
-        }
+
         
         if isinstance(batch, list):
             tensors = {
@@ -622,12 +618,23 @@ class SpecRollDiffusion(pl.LightningModule):
                 "label_roll2": roll2,
                 "pred_roll2": pred_roll2,
             }            
+            
+            losses = {
+                "diffusion_loss": diffusion_loss,
+                'unconditional_diffusion_loss': unconditional_diffusion_loss
+                # "amt_loss": amt_loss
+            }            
         else:
             tensors = {
                 "pred_roll": pred_roll,
                 "label_roll": roll,
                 "spec": spec
             }
+            
+            losses = {
+                "diffusion_loss": diffusion_loss,
+                # "amt_loss": amt_loss
+            }                   
         
         return losses, tensors
     
