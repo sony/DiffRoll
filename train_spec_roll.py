@@ -40,7 +40,8 @@ def main(cfg):
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
                f"{cfg.task.sampling.type}-w={cfg.task.sampling.w}-" + \
-               f"p={cfg.model.args.spec_dropout}-{cfg.dataset.name}"             
+               f"p={cfg.model.args.spec_dropout}-k={cfg.model.args.kernel_size}-" + \
+               f"{cfg.dataset.name}"             
     else:
         name = f"{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \

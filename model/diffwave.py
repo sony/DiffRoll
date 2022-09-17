@@ -105,7 +105,12 @@ class SpectrogramUpsampler(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, n_mels, residual_channels, dilation, uncond=False):
+    def __init__(self,
+                 n_mels,
+                 residual_channels,
+                 dilation,
+                 kernel_size=3,
+                 uncond=False):
         '''
         :param n_mels: inplanes of conv1x1 for spectrogram conditional
         :param residual_channels: audio conv
@@ -113,7 +118,7 @@ class ResidualBlock(nn.Module):
         :param uncond: disable spectrogram conditional
         '''
         super().__init__()
-        self.dilated_conv = Conv1d(residual_channels, 2 * residual_channels, 3, padding=dilation, dilation=dilation)
+        self.dilated_conv = Conv1d(residual_channels, 2 * residual_channels, kernel_size, padding=kernel_size//2, dilation=dilation)
         self.diffusion_projection = Linear(512, residual_channels)
         if not uncond: # conditional model
             self.conditioner_projection = Conv1d(n_mels, 2 * residual_channels, 1)
@@ -571,6 +576,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                  n_mels,
                  norm_args,
                  residual_layers = 30,
+                 kernel_size = 3,
                  dilation_base = 1,
                  spec_args = {},
                  spec_dropout = 0.5,
@@ -599,12 +605,12 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         if condition == 'trainable_z':
             print(f"================trainable_z layers=================")
             self.residual_layers = nn.ModuleList([
-                ResidualBlockz(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+                ResidualBlockz(n_mels, residual_channels, dilation_base**(i % 10), kernel_size, uncond=unconditional)
                 for i in range(residual_layers)
             ])            
         else:
             self.residual_layers = nn.ModuleList([
-                ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+                ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), kernel_size, uncond=unconditional)
                 for i in range(residual_layers)
             ])
             
