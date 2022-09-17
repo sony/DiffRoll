@@ -118,7 +118,11 @@ class ResidualBlock(nn.Module):
         :param uncond: disable spectrogram conditional
         '''
         super().__init__()
-        self.dilated_conv = Conv1d(residual_channels, 2 * residual_channels, kernel_size, padding=kernel_size//2, dilation=dilation)
+        self.dilated_conv = Conv1d(residual_channels,
+                                   2 * residual_channels,
+                                   kernel_size,
+                                   padding=((kernel_size-1)*(dilation-1)+kernel_size-1)//2,
+                                   dilation=dilation)
         self.diffusion_projection = Linear(512, residual_channels)
         if not uncond: # conditional model
             self.conditioner_projection = Conv1d(n_mels, 2 * residual_channels, 1)
