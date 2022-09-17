@@ -8,24 +8,26 @@ max_midi: 108
 learning_rate: 1e-5
 epochs: 2500
 download: False
-data_root: '../MusicDataset'
+data_root: '../../MusicDataset'
 pin_memory: False
 
 
 dataloader:
     train:
         batch_size: 16
-        num_workers: 20 
+        num_workers: 40
         shuffle: True
         pin_memory: ${pin_memory}
+        prefetch_factor: 2
+        persistent_workers: True
     val:
         batch_size: 16
-        num_workers: 8
+        num_workers: 4
         shuffle: False
         pin_memory: ${pin_memory}
     test:
         batch_size: 4
-        num_workers: 8
+        num_workers: 4
         shuffle: False
         pin_memory: ${pin_memory}
         
@@ -47,6 +49,6 @@ modelcheckpoint:
 
 defaults:
     - spec: mel
-    - model: DiffRoll
-    - task: diffusion
+    - model: ClassifierFreeDiffRoll
+    - task: classifierfree_diffusion
     - dataset: MAESTRO
