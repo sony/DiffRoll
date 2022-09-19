@@ -318,6 +318,7 @@ class DiffRoll(SpecRollDiffusion):
         if self.mel_layer != None:
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
+            spec = self.normalize(spec)            
             x_t, spectrogram = trim_spec_roll(x_t, spec)
         else:
             spectrogram = None
@@ -622,6 +623,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         self.output_projection = Conv1d(residual_channels, 88, 1)
         nn.init.zeros_(self.output_projection.weight)
         
+        self.normalize_spec = Normalization(0, 1, norm_args[2])   
         self.normalize = Normalization(norm_args[0], norm_args[1], norm_args[2])        
 
         self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
@@ -634,7 +636,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         if self.mel_layer != None:
             spec = self.mel_layer(waveform) # (B, n_mels, T)
             spec = torch.log(spec+1e-6)
-            spec = self.normalize(spec)
+            spec = self.normalize_spec(spec)
             if self.training: # only use dropout druing training
                 spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
                 
