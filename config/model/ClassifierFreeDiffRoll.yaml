@@ -5,9 +5,9 @@ args:
     condition: 'fixed' # either trainable_spec or trainable_z, or fixed
     n_mels: ${spec.args.n_mels}
     residual_layers: 15
-    kernel_size: 5
+    kernel_size: 9
     dilation_base: 1
-    spec_dropout: 0.1
+    spec_dropout: 0
     norm_args:
     - 0
     - 1

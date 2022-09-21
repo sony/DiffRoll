@@ -1,7 +1,7 @@
 name: 'MAPS'
 train:
     root: ${data_root} 
-    groups: ['AkPnBcht']
+    groups: 'train'
     data_type: 'MUS'
     download: ${download}
     preload: False

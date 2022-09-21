@@ -8,16 +8,18 @@ max_midi: 108
 learning_rate: 1e-5
 epochs: 2500
 download: False
-data_root: '/workspace/public_data/MusicDataset'
-pin_memory: False
-pretrained_path: './weights/MAESTRO_pretrained.ckpt'
+data_root: '../../MusicDataset'
+pin_memory: True
+pretrained_path: './weights/MAESTRO_pretrain_L15C512_k=7_pad=1.ckpt'
 
 dataloader:
     train:
         batch_size: 16
-        num_workers: 16 
+        num_workers: 12 
         shuffle: True
         pin_memory: ${pin_memory}
+        prefetch_factor: 2
+        persistent_workers: True        
     val:
         batch_size: 16
         num_workers: 4
@@ -49,4 +51,4 @@ defaults:
     - spec: mel
     - model: ClassifierFreeDiffRoll
     - task: classifierfree_diffusion
-    - dataset: MAESTRO
+    - dataset: MAPS

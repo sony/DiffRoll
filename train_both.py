@@ -44,10 +44,6 @@ def main(cfg):
     cfg.data_root = to_absolute_path(cfg.data_root)
     cfg.pretrained_path = to_absolute_path(cfg.pretrained_path)
     
-    print(f"{cfg.dataset.train1=}")
-    print(f"{type(cfg.dataset.train1.groups)=}")
-    
-    
     # convert Omega list into python list
     # Otherwise groups argument won't work in MAPS dataset
     train_set1 = getattr(MusicDataset, cfg.dataset.name1)(**OmegaConf.to_container(cfg.dataset.train1, resolve=True))
