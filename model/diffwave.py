@@ -288,6 +288,7 @@ class DiffRoll(SpecRollDiffusion):
                  norm_args,
                  residual_layers = 30,
                  dilation_base = 1,
+                 dilation_bound = 4,
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs)
@@ -298,7 +299,7 @@ class DiffRoll(SpecRollDiffusion):
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, dilation_base**(i % dilation_bound), uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
@@ -583,6 +584,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                  residual_layers = 30,
                  kernel_size = 3,
                  dilation_base = 1,
+                 dilation_bound = 4,
                  spec_args = {},
                  spec_dropout = 0.5,
                  **kwargs):
@@ -610,12 +612,12 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
         if condition == 'trainable_z':
             print(f"================trainable_z layers=================")
             self.residual_layers = nn.ModuleList([
-                ResidualBlockz(n_mels, residual_channels, dilation_base**(i % 10), kernel_size, uncond=unconditional)
+                ResidualBlockz(n_mels, residual_channels, dilation_base**(i % dilation_bound), kernel_size, uncond=unconditional)
                 for i in range(residual_layers)
             ])            
         else:
             self.residual_layers = nn.ModuleList([
-                ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), kernel_size, uncond=unconditional)
+                ResidualBlock(n_mels, residual_channels, dilation_base**(i % dilation_bound), kernel_size, uncond=unconditional)
                 for i in range(residual_layers)
             ])
             
