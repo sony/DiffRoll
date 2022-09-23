@@ -35,7 +35,9 @@ def main(cfg):
     
     if cfg.model.name == 'DiffRollBaseline':
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
-               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-{cfg.dataset.name}"
+               f"t={cfg.task.time_mode}-x_t={cfg.task.x_t}-k={cfg.model.args.kernel_size}-" + \
+               f"dia={cfg.model.args.dilation_base}-{cfg.model.args.dilation_bound}-" + \
+               f"{cfg.dataset.name}"
     elif cfg.model.name == 'ClassifierFreeDiffRoll':
         name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \

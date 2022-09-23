@@ -519,7 +519,9 @@ class DiffRollBaseline(SpecRollBaseline):
                  unconditional,
                  n_mels,
                  residual_layers = 30,
+                 kernel_size = 3,
                  dilation_base = 1,
+                 dilation_bound = 1, 
                  spec_args = {},
                  **kwargs):
         super().__init__(**kwargs)
@@ -529,7 +531,7 @@ class DiffRollBaseline(SpecRollBaseline):
         # Original dilation for audio was 2**(i % dilation_cycle_length)
         # but we might not need dilation for piano roll
         self.residual_layers = nn.ModuleList([
-            ResidualBlock(n_mels, residual_channels, dilation_base**(i % 10), uncond=unconditional)
+            ResidualBlock(n_mels, residual_channels, dilation_base**(i % dilation_bound), kernel_size, uncond=unconditional)
             for i in range(residual_layers)
         ])
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
