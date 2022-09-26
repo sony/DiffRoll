@@ -503,7 +503,63 @@ class SpecRollDiffusion(pl.LightningModule):
                     # if global step starts from self.hparams.timesteps
             noise_list.append((noise_npy, t_index))                       
             self.inner_loop.update()
-            #======== Animation saved ===========              
+            #======== Animation saved ===========      
+            
+        # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
+        roll_pred = noise_list[-1][0] # (B, 1, T, F)        
+
+        if batch_idx==0:
+            self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
+                                  'Test/spec',
+                                  batch_idx)                
+            for noise_npy, t_index in noise_list:
+                if (t_index+1)%10==0: 
+                    fig, ax = plt.subplots(2,2)
+                    for idx, j in enumerate(noise_npy):
+                        # j (1, T, F)
+                        ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
+                        self.logger.experiment.add_figure(
+                            f"Test/pred",
+                            fig,
+                            global_step=self.hparams.timesteps-t_index)
+                        plt.close()
+
+            fig1, ax1 = plt.subplots(2,2)
+            fig2, ax2 = plt.subplots(2,2)
+            for idx in range(4):
+                
+                ax2.flatten()[idx].imshow((roll_pred[idx][0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
+                self.logger.experiment.add_figure(
+                    f"Test/pred_roll",
+                    fig2,
+                    global_step=0)  
+                plt.close()            
+
+            torch.save(noise_list, 'noise_list.pt')
+            
+            #======== Begins animation ===========
+            t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
+            if t_list[-1] != self.hparams.timesteps:
+                t_list = torch.cat((t_list, torch.tensor([self.hparams.timesteps])), 0)
+            ims = []
+            fig, axes = plt.subplots(2,4, figsize=(16, 5))
+
+            title = axes.flatten()[0].set_title(None, fontsize=15)
+            ax_flat = axes.flatten()
+            caxs = []
+            for ax in axes.flatten():
+                div = make_axes_locatable(ax)
+                caxs.append(div.append_axes('right', '5%', '5%'))
+
+            ani = animation.FuncAnimation(fig,
+                                          self.animate_sampling,
+                                          frames=tqdm(t_list, desc='Animating'),
+                                          fargs=(fig, ax_flat, caxs, noise_list, ),                                          
+                                          interval=500,                                          
+                                          blit=False,
+                                          repeat_delay=1000)
+            ani.save('algo2.gif', dpi=80, writer='imagemagick')
+            #======== Animation saved ===========            
         
 
 
@@ -844,6 +900,7 @@ class SpecRollDiffusion(pl.LightningModule):
         # Use our model (noise predictor) to predict the mean 
         x0_pred_0, _ = self(x, torch.zeros_like(waveform), t_tensor, sampling=True) # if sampling = True, the input condition will be overwritten
         x0_pred = x0_pred_0
+        
 #         x0_pred = x0_pred_c
         # x0_pred = x0_pred_0
 
@@ -859,7 +916,7 @@ class SpecRollDiffusion(pl.LightningModule):
                     x-self.sqrt_alphas_cumprod[t_index]* x0_pred)/self.sqrt_one_minus_alphas_cumprod[t_index]) + (
                 sigma * torch.randn_like(x))
 
-        return model_mean, spec               
+        return model_mean, _               
     
     
     def cfdg_ddim_x0(self, x, waveform, t_index):
