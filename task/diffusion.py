@@ -484,35 +484,25 @@ class SpecRollDiffusion(pl.LightningModule):
 #         self.log("Test/Frame_F1", frame_f1)        
         
     def predict_step(self, batch, batch_idx): 
-        if batch_idx==0:
-            noise_list, spec = self.sampling(batch, batch_idx)
-            # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
-            torch.save(noise_list, 'noise_list.pt')
-            
+        noise = batch[0]
+        print(f"{noise.shape=}")
+        waveform = batch[1]
+        device = noise.device
+        # Algorithm 1 line 3: sample t uniformally for every example in the batch
+        
+        self.inner_loop.refresh()
+        self.inner_loop.reset()
+        
+        noise_list = []
+        noise_list.append((noise, self.hparams.timesteps))
 
-
-            #======== Begins animation ===========
-            t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
-            if t_list[-1] != self.hparams.timesteps:
-                t_list = torch.cat((t_list, torch.tensor([self.hparams.timesteps])), 0)
-            ims = []
-            fig, axes = plt.subplots(2,4, figsize=(16, 5))
-
-            title = axes.flatten()[0].set_title(None, fontsize=15)
-            ax_flat = axes.flatten()
-            caxs = []
-            for ax in axes.flatten():
-                div = make_axes_locatable(ax)
-                caxs.append(div.append_axes('right', '5%', '5%'))
-
-            ani = animation.FuncAnimation(fig,
-                                          self.animate_sampling,
-                                          frames=tqdm(t_list, desc='Animating'),
-                                          fargs=(fig, ax_flat, caxs, noise_list, ),                                          
-                                          interval=500,                                          
-                                          blit=False,
-                                          repeat_delay=1000)
-            ani.save('algo2.gif', dpi=80, writer='imagemagick')
+        for t_index in reversed(range(0, self.hparams.timesteps)):
+            noise, spec = self.reverse_diffusion(noise, waveform, t_index)
+            noise_npy = noise.detach().cpu().numpy()
+                    # self.hparams.timesteps-i is used because slide bar won't show
+                    # if global step starts from self.hparams.timesteps
+            noise_list.append((noise_npy, t_index))                       
+            self.inner_loop.update()
             #======== Animation saved ===========              
         
 
@@ -842,7 +832,34 @@ class SpecRollDiffusion(pl.LightningModule):
                     x-self.sqrt_alphas_cumprod[t_index]* x0_pred)/self.sqrt_one_minus_alphas_cumprod[t_index]) + (
                 sigma * torch.randn_like(x))
 
-        return model_mean, spec           
+        return model_mean, spec
+    
+    def generation_ddpm_x0(self, x, waveform, t_index):
+        # x is x_t, when t=T it is pure Gaussian
+        
+        # boardcasting t_index into a tensor
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        
+        # Equation 11 in the paper
+        # Use our model (noise predictor) to predict the mean 
+        x0_pred_0, _ = self(x, torch.zeros_like(waveform), t_tensor, sampling=True) # if sampling = True, the input condition will be overwritten
+        x0_pred = x0_pred_0
+#         x0_pred = x0_pred_c
+        # x0_pred = x0_pred_0
+
+        if t_index == 0:
+            sigma = (1/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))            
+            model_mean = x0_pred / self.sqrt_alphas_cumprod[t_index] 
+        else:
+            sigma = (self.sqrt_one_minus_alphas_cumprod[t_index-1]/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
+                torch.sqrt(1-self.alphas[t_index]))                    
+            model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * x0_pred + (
+                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * (
+                    x-self.sqrt_alphas_cumprod[t_index]* x0_pred)/self.sqrt_one_minus_alphas_cumprod[t_index]) + (
+                sigma * torch.randn_like(x))
+
+        return model_mean, spec               
     
     
     def cfdg_ddim_x0(self, x, waveform, t_index):

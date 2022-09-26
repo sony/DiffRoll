@@ -1,0 +1,25 @@
+gpus: 1
+hop_length: 512
+sequence_length: 327680
+sampling_rate: 16000
+data_root: './'
+checkpoint_path: './weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt' # will be ignored in train.py
+
+dataset:
+    num_samples: 4
+        
+dataloader:
+    batch_size: 4
+    num_workers: 8
+    shuffle: False
+    pin_memory: True
+        
+task:
+    frame_threshold: 0.8        
+        
+trainer:
+    gpus: ${gpus}
+    
+defaults:
+    - model: ClassifierFreeDiffRoll
+    - task: generation
