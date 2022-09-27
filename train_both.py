@@ -41,6 +41,11 @@ def train_dataloader(self):
 
 @hydra.main(config_path="config", config_name="unsupervised_pretrained")
 def main(cfg):
+    # force it to train with two losses
+    
+    if len(cfg.task.loss_keys)==1:
+        cfg.task.loss_keys = ['diffusion_loss', 'unconditional_diffusion_loss']
+    
     cfg.data_root = to_absolute_path(cfg.data_root)
     cfg.pretrained_path = to_absolute_path(cfg.pretrained_path)
     
@@ -74,7 +79,8 @@ def main(cfg):
         name = f"BothPretrained-{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
                f"{cfg.task.sampling.type}-w={cfg.task.sampling.w}-" + \
-               f"p={cfg.model.args.spec_dropout}-{cfg.dataset.name1}"             
+               f"p={cfg.model.args.spec_dropout}-k={cfg.model.args.kernel_size}-" + \
+               f"dia={cfg.model.args.dilation_base}-{cfg.model.args.dilation_bound}-"
     else:
         name = f"BothPretrained-{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
