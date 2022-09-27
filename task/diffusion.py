@@ -568,23 +568,25 @@ class SpecRollDiffusion(pl.LightningModule):
             #======== Animation saved ===========
             
         # export as midi
-        np_frame = noise_list[-1][0][1][0]
-        p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
-        HOP_LENGTH = 160
-        SAMPLE_RATE = 16000
+        for roll_idx, np_frame in enumerate(noise_list[-1][0]):
+            # np_frame = (1, T, 88)
+            np_frame = np_frame[0]
+            p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
+            HOP_LENGTH = 160
+            SAMPLE_RATE = 16000
 
-        MIN_MIDI = 21
-        MAX_MIDI = 108
+            MIN_MIDI = 21
+            MAX_MIDI = 108
 
-        scaling = HOP_LENGTH / SAMPLE_RATE
-        # Converting time steps to seconds and midi number to frequency
-        i_est = (i_est * scaling).reshape(-1, 2)
-        p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+            scaling = HOP_LENGTH / SAMPLE_RATE
+            # Converting time steps to seconds and midi number to frequency
+            i_est = (i_est * scaling).reshape(-1, 2)
+            p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
 
-        clean_notes = (i_est[:,1]-i_est[:,0]>0.05)
+            clean_notes = (i_est[:,1]-i_est[:,0]>0.05)
 
-        midi_path = os.path.join('./', 'midi.mid')
-        save_midi(midi_path, p_est[clean_notes], i_est[clean_notes], [127]*len(p_est))        
+            midi_path = os.path.join('./', f'midi_{roll_idx}.mid')
+            save_midi(midi_path, p_est[clean_notes], i_est[clean_notes], [127]*len(p_est))        
         
 
 
