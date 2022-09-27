@@ -14,6 +14,12 @@ import numpy as np
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 MIN_MIDI = 21
+
+from mir_eval.util import midi_to_hz
+import os
+from mido import Message, MidiFile, MidiTrack
+from mir_eval.util import hz_to_midi
+
 # from model.utils import Normalization
 def linear_beta_schedule(beta_start, beta_end, timesteps):
     return torch.linspace(beta_start, beta_end, timesteps)
@@ -558,8 +564,27 @@ class SpecRollDiffusion(pl.LightningModule):
                                           interval=500,                                          
                                           blit=False,
                                           repeat_delay=1000)
-            ani.save('algo2.gif', dpi=80, writer='imagemagick')
-            #======== Animation saved ===========            
+            ani.save('algo2.gif', dpi=80, writer='imagemagick')         
+            #======== Animation saved ===========
+            
+        # export as midi
+        np_frame = noise_list[-1][0][1][0]
+        p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
+        HOP_LENGTH = 160
+        SAMPLE_RATE = 16000
+
+        MIN_MIDI = 21
+        MAX_MIDI = 108
+
+        scaling = HOP_LENGTH / SAMPLE_RATE
+        # Converting time steps to seconds and midi number to frequency
+        i_est = (i_est * scaling).reshape(-1, 2)
+        p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+
+        clean_notes = (i_est[:,1]-i_est[:,0]>0.05)
+
+        midi_path = os.path.join('./', 'midi.mid')
+        save_midi(midi_path, p_est[clean_notes], i_est[clean_notes], [127]*len(p_est))        
         
 
 
@@ -980,4 +1005,182 @@ class SpecRollDiffusion(pl.LightningModule):
 
         fig.suptitle(f't={t_idx}')
         row1_txt = ax_flat[0].text(-400,45,f'Gaussian N(0,1)')
-        row2_txt = ax_flat[4].text(-300,45,'x_{t-1}')    
+        row2_txt = ax_flat[4].text(-300,45,'x_{t-1}')
+        
+        
+        
+# functions for roll2midi
+
+def postprocess_probabilities_to_midi_events(output_dict):
+    # TODO refactor classes_num, post_processor
+    r"""Postprocess probabilities to MIDI events using thresholds.
+    Args:
+        output_dict, dict: e.g., {
+            'frame_output': (N, 88*5),
+            'reg_onset_output': (N, 88*5),
+            ...}
+    Returns:
+        midi_events: dict, e.g.,
+            {'0': [
+                ['onset_time': 130.24, 'offset_time': 130.25, 'midi_note': 33, 'velocity': 100],
+                ['onset_time': 142.77, 'offset_time': 142.78, 'midi_note': 33, 'velocity': 100],
+                ...]
+             'percussion': [
+                ['onset_time': 6.57, 'offset_time': 6.70, 'midi_note': 36, 'velocity': 100],
+                ['onset_time': 8.13, 'offset_time': 8.29, 'midi_note': 36, 'velocity': 100],
+                ...],
+             ...}
+    """
+    midi_events = {}
+    for k, plugin_name in enumerate(plugin_ids):
+        plugin_name = IX_TO_NAME[plugin_name.item()]        
+#         print('Processing plugin_name: {}'.format(plugin_name), end='\r')
+
+        if plugin_name == 'percussion':
+            (est_note_events, est_pedal_events) = post_processor.output_dict_to_midi_events(
+                plugins_output_dict[plugin_name],
+                detect_type='percussion',
+            )
+
+        else:
+            (est_note_events, est_pedal_events) = post_processor.output_dict_to_midi_events(
+                plugins_output_dict[plugin_name],
+                detect_type='piano',
+            )
+        midi_events[plugin_name] = est_note_events
+    return midi_events
+
+def extract_notes_wo_velocity_torch(onsets, frames, onset_threshold=0.5, frame_threshold=0.5, rule='rule1'):
+    """
+    Finds the note timings based on the onsets and frames information
+    Parameters
+    ----------
+    onsets: torch.FloatTensor, shape = [frames, bins]
+    frames: torch.FloatTensor, shape = [frames, bins]
+    velocity: torch.FloatTensor, shape = [frames, bins]
+    onset_threshold: float
+    frame_threshold: float
+    Returns
+    -------
+    pitches: np.ndarray of bin_indices
+    intervals: np.ndarray of rows containing (onset_index, offset_index)
+    velocities: np.ndarray of velocity values
+    """
+    onsets = (onsets > onset_threshold).long()
+    frames = (frames > frame_threshold).long()
+    onset_diff = torch.cat([onsets[:1, :], onsets[1:, :] - onsets[:-1, :]], dim=0) == 1 # Make sure the activation is only 1 time-step
+    
+    if rule=='rule2':
+        pass
+    elif rule=='rule1':
+        # Use in simple models
+        onset_diff = onset_diff & (frames==1) # New condition such that both onset and frame on to get a note
+    else:
+        raise NameError('Please enter the correct rule name')
+
+    pitches = []
+    intervals = []
+
+    for nonzero in torch.nonzero(onset_diff):
+        frame = nonzero[0].item()
+        pitch = nonzero[1].item()
+
+        onset = frame
+        offset = frame
+
+        # This while loop is looking for where does the note ends
+        while onsets[offset, pitch] or frames[offset, pitch]:
+            offset += 1
+            if offset == onsets.shape[0]:
+                break
+
+        # After knowing where does the note start and end, we can return the pitch information (and velocity)        
+        if offset > onset:
+            pitches.append(pitch)
+            intervals.append([onset, offset])
+
+    return pitches, intervals
+
+
+def extract_notes_wo_velocity(onsets, frames, onset_threshold=0.5, frame_threshold=0.5, rule='rule1'):
+    """
+    Finds the note timings based on the onsets and frames information
+    Parameters
+    ----------
+    onsets: torch.FloatTensor, shape = [frames, bins]
+    frames: torch.FloatTensor, shape = [frames, bins]
+    velocity: torch.FloatTensor, shape = [frames, bins]
+    onset_threshold: float
+    frame_threshold: float
+    Returns
+    -------
+    pitches: np.ndarray of bin_indices
+    intervals: np.ndarray of rows containing (onset_index, offset_index)
+    velocities: np.ndarray of velocity values
+    """
+    onsets = (onsets > onset_threshold).astype(int)
+    frames = (frames > frame_threshold).astype(int)
+    onset_diff = np.concatenate([onsets[:1, :], onsets[1:, :] - onsets[:-1, :]], axis=0) == 1 # Make sure the activation is only 1 time-step
+    
+    if rule=='rule2':
+        pass
+    elif rule=='rule1':
+        # Use in simple models
+        onset_diff = onset_diff & (frames==1) # New condition such that both onset and frame on to get a note
+    else:
+        raise NameError('Please enter the correct rule name')
+
+    pitches = []
+    intervals = []
+    
+    frame_locs, pitch_locs = np.nonzero(onset_diff)
+    for frame, pitch in zip(frame_locs, pitch_locs):
+
+        onset = frame
+        offset = frame
+
+        # This while loop is looking for where does the note ends
+        while onsets[offset, pitch] or frames[offset, pitch]:
+            offset += 1
+            if offset == onsets.shape[0]:
+                break
+
+        # After knowing where does the note start and end, we can return the pitch information (and velocity)        
+        if offset > onset:
+            pitches.append(pitch)
+            intervals.append([onset, offset])
+
+    return np.array(pitches), np.array(intervals)
+
+def save_midi(path, pitches, intervals, velocities):
+    """
+    Save extracted notes as a MIDI file
+    Parameters
+    ----------
+    path: the path to save the MIDI file
+    pitches: np.ndarray of bin_indices
+    intervals: list of (onset_index, offset_index)
+    velocities: list of velocity values
+    """
+    file = MidiFile()
+    track = MidiTrack()
+    file.tracks.append(track)
+    ticks_per_second = file.ticks_per_beat * 2.0
+
+    events = []
+    for i in range(len(pitches)):
+        events.append(dict(type='on', pitch=pitches[i], time=intervals[i][0], velocity=velocities[i]))
+        events.append(dict(type='off', pitch=pitches[i], time=intervals[i][1], velocity=velocities[i]))
+    events.sort(key=lambda row: row['time'])
+
+    last_tick = 0
+    for event in events:
+        current_tick = int(event['time'] * ticks_per_second)
+        velocity = int(event['velocity'] * 127)
+        if velocity > 127:
+            velocity = 127
+        pitch = int(round(hz_to_midi(event['pitch'])))
+        track.append(Message('note_' + event['type'], note=pitch, velocity=velocity, time=current_tick - last_tick))
+        last_tick = current_tick
+
+    file.save(path)
