@@ -223,7 +223,8 @@ class SpecRollDiffusion(pl.LightningModule):
                  frame_threshold,
                  training,
                  sampling,
-                 debug=False
+                 debug=False,
+                 generation_filter=0.0
                 ):
         super().__init__()
         
@@ -583,7 +584,7 @@ class SpecRollDiffusion(pl.LightningModule):
             i_est = (i_est * scaling).reshape(-1, 2)
             p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
 
-            clean_notes = (i_est[:,1]-i_est[:,0]>0.05)
+            clean_notes = (i_est[:,1]-i_est[:,0]>self.hparams.generation_filter)
 
             midi_path = os.path.join('./', f'midi_{roll_idx}.mid')
             save_midi(midi_path, p_est[clean_notes], i_est[clean_notes], [127]*len(p_est))        
