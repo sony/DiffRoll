@@ -10,3 +10,4 @@ training:
     mode: 'x_0' # either 'x_0' or epsilon
 sampling:
     type: 'generation_ddpm_x0'
+generation_filter: 0.02

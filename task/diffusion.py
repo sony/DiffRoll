@@ -584,10 +584,16 @@ class SpecRollDiffusion(pl.LightningModule):
             i_est = (i_est * scaling).reshape(-1, 2)
             p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
 
-            clean_notes = (i_est[:,1]-i_est[:,0]>self.hparams.generation_filter)
+            clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
 
-            midi_path = os.path.join('./', f'midi_{roll_idx}.mid')
-            save_midi(midi_path, p_est[clean_notes], i_est[clean_notes], [127]*len(p_est))        
+            save_midi(os.path.join('./', f'clean_midi_{roll_idx}.mid'),
+                      p_est[clean_notes],
+                      i_est[clean_notes],
+                      [127]*len(p_est))
+            save_midi(os.path.join('./', f'raw_midi_{roll_idx}.mid'),
+                      p_est,
+                      i_est,
+                      [127]*len(p_est))                 
         
 
 

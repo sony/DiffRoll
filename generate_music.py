@@ -29,9 +29,9 @@ def main(cfg):
 
     # Model
     if cfg.task.frame_threshold!=None:
-        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), sampling=cfg.task.sampling, frame_threshold=cfg.task.frame_threshold)
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), sampling=cfg.task.sampling, frame_threshold=cfg.task.frame_threshold, generation_filter=cfg.task.generation_filter)
     else:
-        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path, sampling=cfg.task.sampling))
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path, sampling=cfg.task.sampling, generation_filter=cfg.task.generation_filter))
     
     name = f"Generation-{cfg.model.name}-k={cfg.model.args.kernel_size}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    
