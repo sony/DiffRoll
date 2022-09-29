@@ -10,7 +10,7 @@ epochs: 2500
 download: False
 data_root: '../../MusicDataset'
 pin_memory: True
-pretrained_path: './weights/MAESTRO_pretrain_L15C512_k=7_pad=1.ckpt'
+pretrained_path: './weights/MAESTRO_pretrain_L15C512_k=9_pad=1.ckpt'
 
 dataloader:
     train:
