@@ -14591,8 +14591,8 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h2 id="Table-of-contents">Table of contents<a class="anchor-link" href="#Table-of-contents">&#182;</a></h2><ol>
-<li><a href="#Unconditional-Generation">Unconditional Generation</a></li>
 <li><a href="#Jointist-Transcription-Examples">Transcription (Conditional Transcription)</a></li>
+<li><a href="#Unconditional-Generation">Unconditional Generation</a></li>
 </ol>
 <!-- Three models are compared here:
 - ReconVAT (existing + new data): The proposed semi-supervised AMT framework based on spectrogram reconstruction [[1]](https://arxiv.org/abs/2010.09969) and VAT [[2]](https://arxiv.org/abs/1704.03976). It is trained using existing data for 4k epoches, then add the music downloaded from Youtube or ISMLP as the unlabelled data and train for another 4k epoches.
@@ -14674,14 +14674,51 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<h2 id="Transcription-(Conditional-Generation)">Transcription (Conditional Generation)<a class="anchor-link" href="#Transcription-(Conditional-Generation)">&#182;</a></h2><p style="text-align:center">
+    <img class=
+         "gif_animation"
+         src="samples/transcription/trajectory.gif"
+         alt="Trajectory for generation">
+</p><table border="0">
+
+ <tr>
+    <td style="text-align: left"><b style="font-size:14px">Input Audio (Condition)</b></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_0.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_1.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_2.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_3.mp3" controls>alternative text</audio><br/></td>
+ </tr>
+
+ <tr>
+    <td style="text-align: left"><b style="font-size:14px">Output MIDI</b></td>
+    <td style="text-align: center"><a href="samples/transcription/t00.mid" target="_blank">Download</a><br/></td>
+    <td style="text-align: center"><a href="samples/transcription/t01.mid" target="_blank">Download</a><br/></td>
+    <td style="text-align: center"><a href="samples/transcription/t02.mid" target="_blank">Download</a><br/></td>
+    <td style="text-align: center"><a href="samples/transcription/t03.mid" target="_blank">Download</a><br/></td>
+ </tr>    
+
+ <tr>
+    <td style="text-align: left"><b style="font-size:14px">Synthesized MIDI</b></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_0_transcription.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_1_transcription.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_2_transcription.mp3" controls>alternative text</audio><br/></td>
+    <td style="text-align: center"><audio class="myaudio" src="samples/transcription/audio_3_transcription.mp3" controls>alternative text</audio><br/></td>
+ </tr>
+
+
+
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h2 id="Unconditional-Generation">Unconditional Generation<a class="anchor-link" href="#Unconditional-Generation">&#182;</a></h2><p>XXXXXXXXXXXX</p>
-<p>.gif_animation {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 50%;
-}</p>
-<p style="text-align:center;">
+<p style="text-align:center">
     <img class=
          "gif_animation"
          src="samples/generation/trajectory.gif"
