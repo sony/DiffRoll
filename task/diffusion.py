@@ -13,6 +13,7 @@ from mir_eval.util import midi_to_hz
 import numpy as np
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import torchaudio
 MIN_MIDI = 21
 
 from mir_eval.util import midi_to_hz
@@ -371,6 +372,34 @@ class SpecRollDiffusion(pl.LightningModule):
                                           repeat_delay=1000)
             ani.save('algo2.gif', dpi=80, writer='imagemagick')
             #======== Animation saved ===========
+            
+            for sample_idx, audio in enumerate(batch['audio']):
+                torchaudio.save(f'audio_{sample_idx}.mp3', audio.unsqueeze(0).cpu(), sample_rate=16000)              
+            # np_frame = (1, T, 88)
+                np_frame = noise_list[-1][0][sample_idx][0]
+                p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
+                HOP_LENGTH = 160
+                SAMPLE_RATE = 16000
+
+                MIN_MIDI = 21
+                MAX_MIDI = 108
+
+                scaling = HOP_LENGTH / SAMPLE_RATE
+                # Converting time steps to seconds and midi number to frequency
+                i_est = (i_est * scaling).reshape(-1, 2)
+                p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+
+                clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
+
+                save_midi(os.path.join('./', f'clean_midi_{sample_idx}.mid'),
+                          p_est[clean_notes],
+                          i_est[clean_notes],
+                          [127]*len(p_est))
+                save_midi(os.path.join('./', f'raw_midi_{sample_idx}.mid'),
+                          p_est,
+                          i_est,
+                          [127]*len(p_est))
+                        
             
             
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
