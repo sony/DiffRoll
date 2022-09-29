@@ -3,7 +3,7 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: '../../MusicDataset'
-checkpoint_path: './weights/MAESTRO_k=3_dia=2.ckpt' # will be ignored in train.py
+checkpoint_path: './outputs/2022-09-27/07-09-33/BothPretrained-ClassifierFreeDiffRoll-L15-C512-beta0.02-x_0-cfdg_ddpm_x0-w=0-p=0.1-k=9-dia=1-1-/version_1/checkpoints/last.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
         
