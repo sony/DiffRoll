@@ -15,6 +15,9 @@ import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torchaudio
 MIN_MIDI = 21
+MAX_MIDI = 108
+HOP_LENGTH = 160
+SAMPLE_RATE = 16000
 
 from mir_eval.util import midi_to_hz
 import os
@@ -372,41 +375,13 @@ class SpecRollDiffusion(pl.LightningModule):
                                           repeat_delay=1000)
             ani.save('algo2.gif', dpi=80, writer='imagemagick')
             #======== Animation saved ===========
-            
-            for sample_idx, audio in enumerate(batch['audio']):
-                torchaudio.save(f'audio_{sample_idx}.mp3', audio.unsqueeze(0).cpu(), sample_rate=16000)              
-            # np_frame = (1, T, 88)
-                np_frame = noise_list[-1][0][sample_idx][0]
-                p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
-                HOP_LENGTH = 160
-                SAMPLE_RATE = 16000
-
-                MIN_MIDI = 21
-                MAX_MIDI = 108
-
-                scaling = HOP_LENGTH / SAMPLE_RATE
-                # Converting time steps to seconds and midi number to frequency
-                i_est = (i_est * scaling).reshape(-1, 2)
-                p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
-
-                clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
-
-                save_midi(os.path.join('./', f'clean_midi_{sample_idx}.mid'),
-                          p_est[clean_notes],
-                          i_est[clean_notes],
-                          [127]*len(p_est))
-                save_midi(os.path.join('./', f'raw_midi_{sample_idx}.mid'),
-                          p_est,
-                          i_est,
-                          [127]*len(p_est))
-                        
-            
+              
             
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
                                                                         roll_pred.flatten()>self.hparams.frame_threshold,
                                                                         average='binary')
         
-        for roll_pred_i, roll_label_i in zip(roll_pred, roll_label.numpy()):
+        for sample_idx, (roll_pred_i, roll_label_i) in enumerate(zip(roll_pred, roll_label.numpy())):
             # roll_pred (B, 1, T, F)
             p_est, i_est = extract_notes_wo_velocity(roll_pred_i[0],
                                                      roll_pred_i[0],
@@ -431,9 +406,24 @@ class SpecRollDiffusion(pl.LightningModule):
             i_est = (i_est * scaling).reshape(-1, 2)
             p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
 
-            p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)            
-        
-            self.log("Test/Note_F1", f)         
+            p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)
+            
+            if batch_idx==0:
+                torchaudio.save(f'audio_{sample_idx}.mp3',
+                                batch['audio'][sample_idx].unsqueeze(0).cpu(),
+                                sample_rate=self.hparams.spec_args.sample_rate)     
+                clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
+
+                save_midi(os.path.join('./', f'clean_midi_{sample_idx}.mid'),
+                          p_est[clean_notes],
+                          i_est[clean_notes],
+                          [127]*len(p_est))
+                save_midi(os.path.join('./', f'raw_midi_{sample_idx}.mid'),
+                          p_est,
+                          i_est,
+                          [127]*len(p_est))            
+
+                self.log("Test/Note_F1", f)         
         self.log("Test/Frame_F1", frame_f1)
         
         
@@ -521,7 +511,6 @@ class SpecRollDiffusion(pl.LightningModule):
         
     def predict_step(self, batch, batch_idx): 
         noise = batch[0]
-        print(f"{noise.shape=}")
         waveform = batch[1]
         device = noise.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
@@ -602,11 +591,6 @@ class SpecRollDiffusion(pl.LightningModule):
             # np_frame = (1, T, 88)
             np_frame = np_frame[0]
             p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
-            HOP_LENGTH = 160
-            SAMPLE_RATE = 16000
-
-            MIN_MIDI = 21
-            MAX_MIDI = 108
 
             scaling = HOP_LENGTH / SAMPLE_RATE
             # Converting time steps to seconds and midi number to frequency
