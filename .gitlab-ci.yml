@@ -1,9 +1,12 @@
 image: alpine:latest
 
+
 pages:
   stage: deploy
   script:
-  - echo 'Nothing to do...'
+    - gem install bundler
+    - bundle install
+    - bundle exec jekyll build
   artifacts:
     paths:
     - public
