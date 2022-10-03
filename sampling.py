@@ -28,7 +28,6 @@ def main(cfg):
         waveform = torch.empty(S, cfg.dataset.args.sequence_length)
         for i in range(S):
             waveform[i] = dataset[i]['audio']
-        print(f"{waveform.shape=}")
         dataset = TensorDataset(x, waveform)
         
     elif cfg.task.sampling.type=='generation_ddpm_x0':
@@ -39,9 +38,16 @@ def main(cfg):
 
     # Model
     if cfg.task.frame_threshold!=None:
-        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path), sampling=cfg.task.sampling, frame_threshold=cfg.task.frame_threshold, generation_filter=cfg.task.generation_filter)
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path),
+                                                                    sampling=cfg.task.sampling,
+                                                                    frame_threshold=cfg.task.frame_threshold,
+                                                                    generation_filter=cfg.task.generation_filter,
+                                                                    inpainting=cfg.task.inpainting)
     else:
-        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path, sampling=cfg.task.sampling, generation_filter=cfg.task.generation_filter))
+        model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path),
+                                                                    sampling=cfg.task.sampling,
+                                                                    generation_filter=cfg.task.generation_filter,
+                                                                    inpainting=cfg.task.inpainting)
     
     name = f"Generation-{cfg.model.name}-k={cfg.model.args.kernel_size}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    

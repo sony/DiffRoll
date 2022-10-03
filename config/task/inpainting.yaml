@@ -13,5 +13,5 @@ sampling:
     w: 0.5
 generation_filter: 0.02
 inpainting:
+    - 300
     - 400
-    - 500

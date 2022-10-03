@@ -646,8 +646,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                 spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
                 
             if inpainting:
-                print(f"{inpainting=}")
-                spec[:,:,inpainting[0]:inpainting[1]] = -1
+                spec[:,:,int(inpainting[0]):int(inpainting[1])] = -1
                 
             if sampling==True:
                 if self.hparams.condition == 'trainable_spec':
