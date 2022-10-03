@@ -589,6 +589,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                  dilation_bound = 4,
                  spec_args = {},
                  spec_dropout = 0.5,
+                 inpainting = None,
                  **kwargs):
         self.spec_dropout = spec_dropout
         super().__init__(**kwargs)
@@ -632,7 +633,7 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
 
         self.mel_layer = torchaudio.transforms.MelSpectrogram(**spec_args)        
 
-    def forward(self, x_t, waveform, diffusion_step, sampling=False):
+    def forward(self, x_t, waveform, diffusion_step, sampling=False, inpainting=None):
         # roll (B, 1, T, F)
         # waveform (B, L)
         x_t = x_t.squeeze(1).transpose(1,2)
@@ -643,6 +644,10 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
             spec = self.normalize_spec(spec)
             if self.training: # only use dropout druing training
                 spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
+                
+            if inpainting:
+                print(f"{inpainting=}")
+                spec[:,:,inpainting[0]:inpainting[1]] = -1
                 
             if sampling==True:
                 if self.hparams.condition == 'trainable_spec':

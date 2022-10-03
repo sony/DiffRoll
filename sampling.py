@@ -12,19 +12,29 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 import model as Model
+import AudioLoader.music.amt as MusicDataset
 
 from AudioLoader.music.amt import MAPS, MAESTRO
+from omegaconf import OmegaConf
 
-@hydra.main(config_path="config", config_name="generate")
+@hydra.main(config_path="config", config_name="sampling")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
-    
     S = cfg.dataset.num_samples # choose the number of samples to generate
+    x = torch.randn(S, 1, 640, 88)    
     
-    x = torch.randn(S, 1, 640, 88)
-    waveform = torch.randn(S, 327680)
-    dataset = TensorDataset(x, waveform)
+    if cfg.task.sampling.type=='inpainting_ddpm_x0':
+        dataset = getattr(MusicDataset, cfg.dataset.name)(**OmegaConf.to_container(cfg.dataset.args, resolve=True))
+        waveform = torch.empty(S, cfg.dataset.args.sequence_length)
+        for i in range(S):
+            waveform[i] = dataset[i]['audio']
+        print(f"{waveform.shape=}")
+        dataset = TensorDataset(x, waveform)
         
+    elif cfg.task.sampling.type=='generation_ddpm_x0':
+        waveform = torch.randn(S, 327680)
+        dataset = TensorDataset(x, waveform)
+
     loader = DataLoader(dataset, **cfg.dataloader)
 
     # Model
