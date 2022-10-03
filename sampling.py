@@ -26,9 +26,12 @@ def main(cfg):
     if cfg.task.sampling.type=='inpainting_ddpm_x0':
         dataset = getattr(MusicDataset, cfg.dataset.name)(**OmegaConf.to_container(cfg.dataset.args, resolve=True))
         waveform = torch.empty(S, cfg.dataset.args.sequence_length)
+        roll_labels = torch.empty(S, 640, 88)
         for i in range(S):
-            waveform[i] = dataset[i]['audio']
-        dataset = TensorDataset(x, waveform)
+            sample = dataset[i]
+            waveform[i] = sample['audio']
+            roll_labels[i] = sample['frame']
+        dataset = TensorDataset(x, waveform, roll_labels)
         
     elif cfg.task.sampling.type=='generation_ddpm_x0':
         waveform = torch.randn(S, 327680)
