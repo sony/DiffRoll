@@ -14603,7 +14603,71 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs jp-mod-noInput ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell  jp-mod-noInput ">
+
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+
+<div class="jp-OutputArea jp-Cell-outputArea">
+
+<div class="jp-OutputArea-child">
+
+
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html">
+
+<style>
+audio {width:100px}; td {vertical-align: center}
+
+.myaudio {
+    controlslist: noplaybackrate;
+    controls
+}
+
+/* Removes the timeline */
+audio::-webkit-media-controls-timeline {
+  display: none !important;
+}
+
+audio::-webkit-media-controls-timeline-container {
+  display: none !important;
+}
+
+
+/* Removes the time stamp */
+audio::-webkit-media-controls-current-time-display {
+  display: none;
+}
+audio::-webkit-media-controls-time-remaining-display {
+  display: none;
+}
+
+/* Removes mute-button */
+audio::-webkit-media-controls-mute-button {
+  display: none !important;
+}
+
+/* Removes volumn slider */
+audio::-webkit-media-controls-volume-slider {
+    display: none !important;
+}
+audio::-webkit-media-controls-volume-slider-container {
+    display: none !important;
+}
+
+}
+</style>
+
+
+
+
+</div>
+
+</div>
+
+</div>
+
+</div>
 
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs jp-mod-noInput ">
 
@@ -14613,18 +14677,30 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Transcription-(Conditional-Generation)">Transcription (Conditional Generation)<a class="anchor-link" href="#Transcription-(Conditional-Generation)">&#182;</a></h2><p style="text-align:center">
-    <img class=
-         "gif_animation"
-         src="samples/transcription/trajectory.gif"
-         alt="Trajectory for generation">
-</p><table border="0">
+<h2 id="Transcription-(Conditional-Generation)">Transcription (Conditional Generation)<a class="anchor-link" href="#Transcription-(Conditional-Generation)">&#182;</a></h2><table border="0">
+
+ <tr>   
+    <td style="text-align: left"><b style="font-size:14px">Sampling<br>Trajectory</b></td>
+    <td colspan="4">    <img class=
+             "gif_animation"
+             src="samples/transcription/trajectory.gif"
+             alt="Trajectory for generation"></td>
+ </tr>    
+
  <tr>
     <td style="text-align: left"><b style="font-size:14px">File Name</b></td>
     <td style="text-align: center; font-size:150%">Sample 1</td>
     <td style="text-align: center; font-size:150%">Sample 2</td>
     <td style="text-align: center; font-size:150%">Sample 3</td>
-    <td style="text-align: center; font-size:150%">Sample 4</td>     
+    <td style="text-align: center; font-size:150%">Sample 4</td>
+ </tr>
+
+ <tr>
+    <td style="text-align: left"><b style="font-size:14px">Input Audio (Condition)</b></td>
+    <td style="text-align: center"><img class="image" width="300" src="samples/transcription/spec00.png" alt="sample0"></td>
+    <td style="text-align: center"><img class="image" width="300" src="samples/transcription/spec01.png" alt="sample0"></td>
+    <td style="text-align: center"><img class="image" width="300" src="samples/transcription/spec02.png" alt="sample0"></td>
+    <td style="text-align: center"><img class="image" width="300" src="samples/transcription/spec03.png" alt="sample0"></td>     
  </tr>    
 
  <tr>
@@ -14690,12 +14766,15 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Inpainting">Inpainting<a class="anchor-link" href="#Inpainting">&#182;</a></h2><p style="text-align:center">
-    <img class=
-         "gif_animation"
-         src="samples/inpainting/trajectory.gif"
-         alt="Trajectory for generation">
-</p><table border="0">
+<h2 id="Inpainting">Inpainting<a class="anchor-link" href="#Inpainting">&#182;</a></h2><table border="0">
+ <tr>   
+    <td style="text-align: left"><b style="font-size:14px">Sampling<br>Trajectory</b></td>
+    <td colspan="4">    <img class=
+             "gif_animation"
+             src="samples/inpainting/trajectory.gif"
+             alt="Trajectory for generation"></td>
+ </tr>        
+
  <tr>
     <td style="text-align: left"><b style="font-size:14px">File Name</b></td>
     <td style="text-align: center; font-size:150%">Sample 1</td>
@@ -14766,12 +14845,15 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h2 id="Unconditional-Generation">Unconditional Generation<a class="anchor-link" href="#Unconditional-Generation">&#182;</a></h2><p>XXXXXXXXXXXX</p>
-<p style="text-align:center">
-    <img class=
-         "gif_animation"
-         src="samples/generation/trajectory.gif"
-         alt="Trajectory for generation">
-</p><table border="0">
+<table border="0">
+
+ <tr>   
+    <td style="text-align: left"><b style="font-size:14px">Sampling<br>Trajectory</b></td>
+    <td colspan="4">    <img class=
+             "gif_animation"
+             src="samples/generation/trajectory.gif"
+             alt="Trajectory for generation"></td>
+ </tr>      
 
  <tr>
     <td style="text-align: left"><b style="font-size:14px">Posteriorgrams</b></td>
