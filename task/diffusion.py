@@ -318,6 +318,7 @@ class SpecRollDiffusion(pl.LightningModule):
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
         if batch_idx==0:
+            torch.save(spec, 'spec.pt')
             self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
                                   'Test/spec',
                                   batch_idx)                
