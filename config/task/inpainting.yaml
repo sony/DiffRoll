@@ -12,6 +12,10 @@ sampling:
     type: 'inpainting_ddpm_x0'
     w: 0.5
 generation_filter: 0.02
-inpainting:
+inpainting_t:
     - 300
     - 400
+inpainting_f:
+    - 30
+    - 60    
+    

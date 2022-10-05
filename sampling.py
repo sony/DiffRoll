@@ -45,12 +45,14 @@ def main(cfg):
                                                                     sampling=cfg.task.sampling,
                                                                     frame_threshold=cfg.task.frame_threshold,
                                                                     generation_filter=cfg.task.generation_filter,
-                                                                    inpainting=cfg.task.inpainting)
+                                                                    inpainting_t=cfg.task.inpainting_t,
+                                                                    inpainting_f=cfg.task.inpainting_f)
     else:
         model = getattr(Model, cfg.model.name).load_from_checkpoint(to_absolute_path(cfg.checkpoint_path),
                                                                     sampling=cfg.task.sampling,
                                                                     generation_filter=cfg.task.generation_filter,
-                                                                    inpainting=cfg.task.inpainting)
+                                                                    inpainting_t=cfg.task.inpainting_t,
+                                                                    inpainting_f=cfg.task.inpainting_f)
     
     name = f"Generation-{cfg.model.name}-k={cfg.model.args.kernel_size}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=name)    

@@ -513,7 +513,7 @@ class SpecRollDiffusion(pl.LightningModule):
     def predict_step(self, batch, batch_idx): 
         noise = batch[0]
         waveform = batch[1]
-        if self.hparams.inpainting:
+        if self.hparams.inpainting_f or self.hparams.inpainting_t:
             roll_label = batch[2]
         
         device = noise.device
@@ -998,7 +998,7 @@ class SpecRollDiffusion(pl.LightningModule):
         
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
-        x0_pred_c, spec = self(x, waveform, t_tensor, inpainting=self.hparams.inpainting)
+        x0_pred_c, spec = self(x, waveform, t_tensor, inpainting_t=self.hparams.inpainting_t, inpainting_f=self.hparams.inpainting_f)
         x0_pred_0, _ = self(x, torch.zeros_like(waveform), t_tensor, sampling=True) # if sampling = True, the input condition will be overwritten
         x0_pred = (1+self.hparams.sampling.w)*x0_pred_c - self.hparams.sampling.w*x0_pred_0
 #         x0_pred = x0_pred_c
