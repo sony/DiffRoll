@@ -647,13 +647,10 @@ class ClassifierFreeDiffRoll(SpecRollDiffusion):
                 spec = self.uncon_dropout(spec, self.hparams.spec_dropout) # making some spec 0 to be unconditional
                 
             if inpainting_t and inpainting_f==None:
-                print(f"me?")
                 spec[:,:,int(inpainting_t[0]):int(inpainting_t[1])] = -1
             elif inpainting_t==None and inpainting_f:
-                print(f"me2?")
                 spec[:,int(inpainting_f[0]):int(inpainting_f[1]),:] = -1
             elif inpainting_t and inpainting_f:
-                print(f"me3?")
                 spec[:,int(inpainting_f[0]):int(inpainting_f[1]),int(inpainting_t[0]):int(inpainting_t[1])] = -1       
                 
             if sampling==True:
