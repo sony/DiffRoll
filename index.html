@@ -14591,10 +14591,11 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <h2 id="Table-of-contents">Table of contents<a class="anchor-link" href="#Table-of-contents">&#182;</a></h2><ol>
-<li><a href="#Transcription-(Conditional-Generation">Transcription (Conditional Generation)</a>)</li>
+<li><a href="#Transcription-%28Conditional-Generation%29">Transcription (Conditional Generation)</a></li>
 <li><a href="#Inpainting-1:-Gap-Filling">Inpainting 1</a></li>
 <li><a href="#Inpainting-2:-Music-Continuation">Inpainting 2</a></li>
 <li><a href="#Unconditional-Generation">Unconditional Generation</a></li>
+<li><a href="#L2-Loss">About L2 loss between $\hat{x}_0$ and $x_\text{roll}$</a></li>
 </ol>
 <!-- Three models are compared here:
 - ReconVAT (existing + new data): The proposed semi-supervised AMT framework based on spectrogram reconstruction [[1]](https://arxiv.org/abs/2010.09969) and VAT [[2]](https://arxiv.org/abs/1704.03976). It is trained using existing data for 4k epoches, then add the music downloaded from Youtube or ISMLP as the unlabelled data and train for another 4k epoches.
@@ -14767,6 +14768,7 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p><a href="#Table-of-contents">Back to Top</a></p>
 <h2 id="Inpainting-1:-Gap-Filling">Inpainting 1: Gap Filling<a class="anchor-link" href="#Inpainting-1:-Gap-Filling">&#182;</a></h2><table border="0">    
  <tr>
     <td style="text-align: left"><b style="font-size:14px">File Name</b></td>
@@ -14839,6 +14841,7 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p><a href="#Table-of-contents">Back to Top</a></p>
 <h2 id="Inpainting-2:-Music-Continuation">Inpainting 2: Music Continuation<a class="anchor-link" href="#Inpainting-2:-Music-Continuation">&#182;</a></h2><table border="0">  
 
  <tr>
@@ -14910,6 +14913,7 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
+<p><a href="#Table-of-contents">Back to Top</a></p>
 <h2 id="Unconditional-Generation">Unconditional Generation<a class="anchor-link" href="#Unconditional-Generation">&#182;</a></h2><p>XXXXXXXXXXXX</p>
 <table border="0">
 
@@ -14955,7 +14959,8 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="About-L2-loss-between-$%5Chat%7Bx%7D_0$-and-$x_%5Ctext%7Broll%7D$">About L2 loss between $\hat{x}_0$ and $x_\text{roll}$<a class="anchor-link" href="#About-L2-loss-between-$%5Chat%7Bx%7D_0$-and-$x_%5Ctext%7Broll%7D$">&#182;</a></h2><p>We want to show that minimizing the L2 loss between the model predicted posteriorgram $\hat{x}_0$ and the ground truth piano roll $x_\text{roll}$ is equivalent to the original DDPM paper where the loss between the model predicted noise $\hat{\epsilon}$ and the noise $\epsilon$ sampled from a Gaussian distribution.</p>
+<p><a href="#Table-of-contents">Back to Top</a></p>
+<h2 id="L2-Loss">L2 Loss<a class="anchor-link" href="#L2-Loss">&#182;</a></h2><p>We want to show that minimizing the L2 loss between the model predicted posteriorgram $\hat{x}_0$ and the ground truth piano roll $x_\text{roll}$ is equivalent to the original DDPM paper where the loss between the model predicted noise $\hat{\epsilon}$ and the noise $\epsilon$ sampled from a Gaussian distribution.</p>
 <p>We start with the loss between $\epsilon$ and $\epsilon_\theta$ that is commonly used in diffusion models.
 <!---$$L = \mathop{\mathbb{E}}_{t,x_0,\epsilon}\left[ \|\epsilon-\epsilon_\theta(\sqrt{\bar{\alpha}_t}x_0+\sqrt{1-\bar{\alpha}_t}\epsilon, t) \|\right]$$---></p>
 $$L =\|\epsilon-\hat{\epsilon}\|^2\label{A}\tag{A}$$<p>From Eq.(1) of our paper, we have the following two relationships.
