@@ -14679,7 +14679,10 @@ audio::-webkit-media-controls-volume-slider-container {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h2 id="Transcription-(Conditional-Generation)">Transcription (Conditional Generation)<a class="anchor-link" href="#Transcription-(Conditional-Generation)">&#182;</a></h2><table border="0">
+<h2 id="Transcription-(Conditional-Generation)">Transcription (Conditional Generation)<a class="anchor-link" href="#Transcription-(Conditional-Generation)">&#182;</a></h2><p>In this section, we use the spectrograms $x_\text{spec}$ as the condition of our model. By doing so, our model transcribes the spectrogram, but it can be also considered as conditional generation.</p>
+<p>For the transcription, convert the output posteriorgrams into piano rolls and then we export the piano rolls into midi files.</p>
+<p><a href="https://hookup.co.jp/products/image-line-software/fl-studio">FL Studio</a> is used to synthesize audio from midi files.</p>
+<table border="0">
 
  <tr>   
     <td style="text-align: left"><b style="font-size:14px">Sampling<br>Trajectory</b></td>
@@ -14769,7 +14772,8 @@ audio::-webkit-media-controls-volume-slider-container {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <p><a href="#Table-of-contents">Back to Top</a></p>
-<h2 id="Inpainting-1:-Gap-Filling">Inpainting 1: Gap Filling<a class="anchor-link" href="#Inpainting-1:-Gap-Filling">&#182;</a></h2><table border="0">    
+<h2 id="Inpainting-1:-Gap-Filling">Inpainting 1: Gap Filling<a class="anchor-link" href="#Inpainting-1:-Gap-Filling">&#182;</a></h2><p>In this section, we mask part of the spectrograms $x_\text{spec}$ with $-1$. By doing so, our model generates music for the missing part masked with $-1$ and transcribes the rest of the spectrogram. There are rooms for improvements but we will leave it as our future work.</p>
+<table border="0">    
  <tr>
     <td style="text-align: left"><b style="font-size:14px">File Name</b></td>
     <td style="text-align: center; font-size:150%">Sample 1</td>
@@ -14914,7 +14918,7 @@ audio::-webkit-media-controls-volume-slider-container {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
 <p><a href="#Table-of-contents">Back to Top</a></p>
-<h2 id="Unconditional-Generation">Unconditional Generation<a class="anchor-link" href="#Unconditional-Generation">&#182;</a></h2><p>XXXXXXXXXXXX</p>
+<h2 id="Unconditional-Generation">Unconditional Generation<a class="anchor-link" href="#Unconditional-Generation">&#182;</a></h2><p>In this section, we use a tensor of $-1$ with the same shape of $x_\text{spec}$ as the condition. Our model generates new piano rolls which can be considered as a form of music generation. There are rooms for improvements but we will leave it as our future work.</p>
 <table border="0">
 
  <tr>   
@@ -14978,8 +14982,6 @@ $$L =\|\epsilon-\hat{\epsilon}\|^2\label{A}\tag{A}$$<p>From Eq.(1) of our paper,
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs jp-mod-noInput ">
-
 </div>
 </body>
 
