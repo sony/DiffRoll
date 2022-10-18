@@ -1,18 +1,22 @@
 # Table of Content
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=2 orderedList=false} -->
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=4 orderedList=false} -->
 
 <!-- code_chunk_output -->
-
-- [Table of Content](#table-of-content)
 - [Installation](#installation)
 - [Training](#training)
   - [Supervised training](#supervised-training)
   - [Unsupervised pretraining](#unsupervised-pretraining)
+    - [Step 1: Pretraining on MAESTRO using only piano rolls](#step-1-pretraining-on-maestro-using-only-piano-rolls)
+    - [Step 2](#step-2)
+      - [Option A: pre-DiffRoll ($p = 0.1$)](#option-a-pre-diffroll-p-01)
+      - [Option B: pre-DiffRoll ($p = 0+1$)](#option-b-pre-diffroll-p-01)
+      - [Option C: MAESTRO 0.1](#option-c-maestro-01)
 - [Sampling](#sampling)
   - [Transcription](#transcription)
   - [Generation](#generation)
 
 <!-- /code_chunk_output -->
+
 
 # Installation
 This repo is developed using `python==3.8.10`, so it is recommended to use `python>=3.8.10`.
@@ -55,34 +59,36 @@ python train_spec_roll.py gpus=[0] model.args.kernel_size=9 model.args.spec_drop
 
 The pretrained checkpoints are avaliable at `outputs/YYYY-MM-DD/HH-MM-SS/ClassifierFreeDiffRoll/version_1/checkpoints`.
 
-After this, you can choose one of the methods (Step [2a](#step-2a:-continue-training-on-maps-using-both-spectrograms-and-piano-rolls), 2b, or 2c) to continue training below.
+After this, you can choose one of the options ([2A](#option-a-pre-diffroll-p-01), [2B](#option-b-pre-diffroll-p-01), or [2C](#option-c-maestro-01)) to continue training below.
 
 
-### Step 2a: Continue training on MAPS using both spectrograms and piano rolls
+### Step 2
+Choose one of the options below ([A](#option-a-pre-diffroll-p-01), [B](#option-b-pre-diffroll-p-01), or [C](#option-c-maestro-01)).
+#### Option A: pre-DiffRoll ($p = 0.1$)
 
 ```
-python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=MAPS dataloader.train.num_workers=4 epochs=2500 pretrained_path='path_to_your_weights' 
+python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0.1 dataset=MAPS dataloader.train.num_workers=4 epochs=10000 pretrained_path='path_to_your_weights' 
 ```
 
-- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1:-pretraining-on-maestro-using-only-piano-rolls)
-- other arguments are same as [Supervised Training](#supervised-training).
-
-### Step 2b: Continue training on MAPS using both spectrograms and piano rolls
-```
-python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=MAPS dataloader.train.num_workers=4 epochs=2500 pretrained_path='path_to_your_weights' 
-```
-
-- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1:-pretraining-on-maestro-using-only-piano-rolls)
+- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1-pretraining-on-maestro-using-only-piano-rolls)
 - other arguments are same as [Supervised Training](#supervised-training).
 
 
-### Step 2b: Continue training on MAPS using both spectrograms and piano rolls and MAESTRO using only piano rolls 
+#### Option B: pre-DiffRoll ($p = 0+1$)
 
 ```
 python train_both.py gpus=[0] model.args.kernel_size=9 dataset=Both epochs=10000 model.args.spec_dropout=0
 ```
 
+#### Option C: MAESTRO 0.1
+This option is not reported in the paper, but it is the best.
 
+```
+python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=MAESTRO dataloader.train.num_workers=4 epochs=2500 pretrained_path='path_to_your_weights' 
+```
+
+- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1-pretraining-on-maestro-using-only-piano-rolls)
+- other arguments are same as [Supervised Training](#supervised-training).
 
 # Sampling
 ## Transcription
