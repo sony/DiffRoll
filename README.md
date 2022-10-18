@@ -3,13 +3,15 @@
 
 <!-- code_chunk_output -->
 - [Installation](#installation)
+- [Table of Content](#table-of-content)
+- [Installation](#installation)
 - [Training](#training)
   - [Supervised training](#supervised-training)
   - [Unsupervised pretraining](#unsupervised-pretraining)
     - [Step 1: Pretraining on MAESTRO using only piano rolls](#step-1-pretraining-on-maestro-using-only-piano-rolls)
     - [Step 2](#step-2)
-      - [Option A: pre-DiffRoll ($p = 0.1$)](#option-a-pre-diffroll-p-01)
-      - [Option B: pre-DiffRoll ($p = 0+1$)](#option-b-pre-diffroll-p-01)
+      - [Option A: pre-DiffRoll (p=0.1)](#option-a-pre-diffroll-p01)
+      - [Option B: pre-DiffRoll (p=0+1)](#option-b-pre-diffroll-p01)
       - [Option C: MAESTRO 0.1](#option-c-maestro-01)
 - [Sampling](#sampling)
   - [Transcription](#transcription)
@@ -64,7 +66,7 @@ After this, you can choose one of the options ([2A](#option-a-pre-diffroll-p-01)
 
 ### Step 2
 Choose one of the options below ([A](#option-a-pre-diffroll-p-01), [B](#option-b-pre-diffroll-p-01), or [C](#option-c-maestro-01)).
-#### Option A: pre-DiffRoll ($p = 0.1$)
+#### Option A: pre-DiffRoll (p=0.1)
 
 ```
 python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0.1 dataset=MAPS dataloader.train.num_workers=4 epochs=10000 pretrained_path='path_to_your_weights' 
@@ -74,7 +76,7 @@ python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spe
 - other arguments are same as [Supervised Training](#supervised-training).
 
 
-#### Option B: pre-DiffRoll ($p = 0+1$)
+#### Option B: pre-DiffRoll (p=0+1)
 
 ```
 python train_both.py gpus=[0] model.args.kernel_size=9 dataset=Both epochs=10000 model.args.spec_dropout=0
