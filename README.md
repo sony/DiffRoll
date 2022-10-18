@@ -37,6 +37,13 @@ python train_spec_roll.py gpus=[0] model.args.kernel_size=9 model.args.spec_drop
 - `dataloader.train.num_workers` sets the number of workers for train loader.
 - `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded.
 
+The checkpoints and training logs are avaliable at `outputs/YYYY-MM-DD/HH-MM-SS/`. 
+
+To check the progress of training using TensorBoard, you can use the command below
+```
+tensorboard --logdir='./outputs'
+```
+
 ## Unsupervised pretraining
 ### Step 1: Pretraining on MAESTRO using only piano rolls
 ```
@@ -44,9 +51,32 @@ python train_spec_roll.py gpus=[0] model.args.kernel_size=9 model.args.spec_drop
 ```
 
 - `model.args.spec_dropout` sets the dropout rate ($p$ in the paper). When it is set to `1`, it means no spectrograms will be used (all spectrograms dropped to `-1`)
+- other arguments are same as [Supervised Training](#supervised-training).
+
+The pretrained checkpoints are avaliable at `outputs/YYYY-MM-DD/HH-MM-SS/ClassifierFreeDiffRoll/version_1/checkpoints`.
+
+After this, you can choose one of the methods (Step [2a](#step-2a:-continue-training-on-maps-using-both-spectrograms-and-piano-rolls), 2b, or 2c) to continue training below.
 
 
-### Step 2: Continue training on MAPS using both spectrograms and piano rolls
+### Step 2a: Continue training on MAPS using both spectrograms and piano rolls
+
+```
+python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=MAPS dataloader.train.num_workers=4 epochs=2500 pretrained_path='path_to_your_weights' 
+```
+
+- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1:-pretraining-on-maestro-using-only-piano-rolls)
+- other arguments are same as [Supervised Training](#supervised-training).
+
+### Step 2b: Continue training on MAPS using both spectrograms and piano rolls
+```
+python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=MAPS dataloader.train.num_workers=4 epochs=2500 pretrained_path='path_to_your_weights' 
+```
+
+- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1:-pretraining-on-maestro-using-only-piano-rolls)
+- other arguments are same as [Supervised Training](#supervised-training).
+
+
+### Step 2b: Continue training on MAPS using both spectrograms and piano rolls and MAESTRO using only piano rolls 
 
 ```
 python train_both.py gpus=[0] model.args.kernel_size=9 dataset=Both epochs=10000 model.args.spec_dropout=0
