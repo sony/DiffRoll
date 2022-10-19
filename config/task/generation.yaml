@@ -1,3 +1,4 @@
+name: 'generation'
 lr: ${learning_rate}
 timesteps: 200
 loss_type: 'l2'
@@ -11,3 +12,5 @@ training:
 sampling:
     type: 'generation_ddpm_x0'
 generation_filter: 0.02
+inpainting_t: null
+inpainting_f: null     

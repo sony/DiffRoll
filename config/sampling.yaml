@@ -2,8 +2,8 @@ gpus: 1
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
-data_root: '../../MusicDataset'
-checkpoint_path: './weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt' # will be ignored in train.py
+data_root: '../MusicDataset'
+checkpoint_path: 'weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt' # will be ignored in train.py
 
 dataset:
     # -----------For generation-----------

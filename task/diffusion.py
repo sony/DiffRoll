@@ -565,8 +565,8 @@ class SpecRollDiffusion(pl.LightningModule):
                 plt.close()            
 
             torch.save(noise_list, 'noise_list.pt')
-            torch.save(spec, 'spec.pt')
-            torch.save(roll_label, 'roll_label.pt')
+            # torch.save(spec, 'spec.pt')
+            # torch.save(roll_label, 'roll_label.pt')
             
             #======== Begins animation ===========
             t_list = torch.arange(1, self.hparams.timesteps, 5).flip(0)
@@ -614,22 +614,23 @@ class SpecRollDiffusion(pl.LightningModule):
                       i_est,
                       [127]*len(p_est))
             
-        for roll_idx, np_frame in enumerate(roll_label.unsqueeze(1).cpu().numpy()):
-            # np_frame = (1, T, 88)
-            np_frame = np_frame[0]
-            p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
+#         # uncomment this part if you want to save ground truth midi
+#         for roll_idx, np_frame in enumerate(roll_label.unsqueeze(1).cpu().numpy()):
+#             # np_frame = (1, T, 88)
+#             np_frame = np_frame[0]
+#             p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
 
-            scaling = HOP_LENGTH / SAMPLE_RATE
-            # Converting time steps to seconds and midi number to frequency
-            i_est = (i_est * scaling).reshape(-1, 2)
-            p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
+#             scaling = HOP_LENGTH / SAMPLE_RATE
+#             # Converting time steps to seconds and midi number to frequency
+#             i_est = (i_est * scaling).reshape(-1, 2)
+#             p_est = np.array([midi_to_hz(MIN_MIDI + midi) for midi in p_est])
 
-            clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
+#             clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
 
-            save_midi(os.path.join('./', f'label_midi_{roll_idx}.mid'),
-                      p_est,
-                      i_est,
-                      [127]*len(p_est))            
+#             save_midi(os.path.join('./', f'label_midi_{roll_idx}.mid'),
+#                       p_est,
+#                       i_est,
+#                       [127]*len(p_est))            
             
             
         
