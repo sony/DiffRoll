@@ -61,7 +61,7 @@ python train_spec_roll.py gpus=[0] model.args.kernel_size=9 model.args.spec_drop
 
 The pretrained checkpoints are avaliable at `outputs/YYYY-MM-DD/HH-MM-SS/ClassifierFreeDiffRoll/version_1/checkpoints`.
 
-After this, you can choose one of the options ([2A](#option-a-pre-diffroll-p-01), [2B](#option-b-pre-diffroll-p-01), or [2C](#option-c-maestro-01)) to continue training below.
+After this, you can choose one of the options ([2A](#option-a-pre-diffroll-%28p-0.1%29), [2B](#option-b-pre-diffroll-%28p-0+1%29), or [2C](#option-c-maestro-01)) to continue training below.
 
 
 ### Step 2
@@ -79,8 +79,12 @@ python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spe
 #### Option B: pre-DiffRoll (p=0+1)
 
 ```
-python train_both.py gpus=[0] model.args.kernel_size=9 dataset=Both epochs=10000 model.args.spec_dropout=0
+python continue_train_both.py gpus=[0] model.args.kernel_size=9 model.args.spec_dropout=0 dataset=Both dataloader.train.num_workers=4epochs=10000 pretrained_path='path_to_your_weights' 
 ```
+
+- `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1-pretraining-on-maestro-using-only-piano-rolls)
+- `model.args.spec_dropout` controls the dropout for the MAPS dataset. The MAESTRO dataset is always set to p=-1. 
+- other arguments are same as [Supervised Training](#supervised-training).
 
 #### Option C: MAESTRO 0.1
 This option is not reported in the paper, but it is the best.
