@@ -61,11 +61,11 @@ python train_spec_roll.py gpus=[0] model.args.kernel_size=9 model.args.spec_drop
 
 The pretrained checkpoints are avaliable at `outputs/YYYY-MM-DD/HH-MM-SS/ClassifierFreeDiffRoll/version_1/checkpoints`.
 
-After this, you can choose one of the options ([2A](#option-a-pre-diffroll-%28p-0.1%29), [2B](#option-b-pre-diffroll-%28p-0+1%29), or [2C](#option-c-maestro-01)) to continue training below.
+After this, you can choose one of the options ([2A](#option-a-pre-diffroll-p01), [2B](#option-b-pre-diffroll-p01), or [2C](#option-c-maestro-01)) to continue training below.
 
 
 ### Step 2
-Choose one of the options below ([A](#option-a-pre-diffroll-p-01), [B](#option-b-pre-diffroll-p-01), or [C](#option-c-maestro-01)).
+Choose one of the options below ([A](#option-a-pre-diffroll-p01), [B](#option-b-pre-diffroll-p01), or [C](#option-c-maestro-01)).
 #### Option A: pre-DiffRoll (p=0.1)
 
 ```
@@ -97,8 +97,19 @@ python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spe
 - other arguments are same as [Supervised Training](#supervised-training).
 
 # Sampling
+You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214252#.Y00_xUzP260). After downloading, put them inside the folder `weights`.
+
 ## Transcription
-```python test.py gpus=[1]```
+This script supports only transcribing music from either MAPS or MAESTRO.
+TODO: add support for transcribing any music
+
+First, open `config/test.yaml`, and then specify the weight to use in `checkpoint_path`.
+For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
+
+```
+python test.py gpus=[0]
+```
+
 
 
 ## Inpainting

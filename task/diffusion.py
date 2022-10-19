@@ -706,6 +706,8 @@ class SpecRollDiffusion(pl.LightningModule):
                     sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
                     noise=noise)                
                 pred_roll2, spec2 = self(x_t2, waveform2, t, sampling=True) # sampling = True
+                # line 656 of diffwav.py will be activated and the second dataset would be always p=-1
+                # i.e. the spectrograms are always -1
                 unconditional_diffusion_loss = self.p_losses(roll2, pred_roll2, loss_type=self.hparams.loss_type)
             
         elif self.hparams.training.mode == 'ex_0':
