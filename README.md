@@ -15,6 +15,7 @@
       - [Option C: MAESTRO 0.1](#option-c-maestro-01)
 - [Sampling](#sampling)
   - [Transcription](#transcription)
+  - [Inpainting](#inpainting)
   - [Generation](#generation)
 
 <!-- /code_chunk_output -->
