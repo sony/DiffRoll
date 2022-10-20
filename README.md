@@ -101,9 +101,11 @@ You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214
 
 ## Transcription
 This script supports only transcribing music from either MAPS or MAESTRO.
+
 TODO: add support for transcribing any music
 
 First, open `config/test.yaml`, and then specify the weight to use in `checkpoint_path`.
+
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
@@ -113,7 +115,29 @@ python test.py gpus=[0]
 
 
 ## Inpainting
-```python sampling.py task=inpaintingpython sampling.py task=inpainting```
+This script supports only transcribing music from either MAPS or MAESTRO.
+
+TODO: add support for transcribing any music
+
+First, open `config/sampling.yaml`, and then specify the weight to use in `checkpoint_path`.
+
+For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
+
+```
+python sampling.py task=inpainting task.inpainting_t=[0,100]
+```
+
+- `task.inpainting_t` sets the frames to be masked to -1 in the spectrogram. `[0,100]` means that frame 0-99 will be masked to -1.
 
 ## Generation
-```python generate_music.py```
+First, open `config/sampling.yaml`, and then specify the weight to use in `checkpoint_path`.
+
+For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
+
+```
+python sampling.py task=generation dataset.num_samples=8 dataloader.batch_size=6
+
+```
+
+- `generation dataset.num_sample` sets the number of piano rolls to be generated.
+- `dataloader.batch_size` sets the batch size of the dataloader. If you have enough GPU memory, you can set `dataloader.batch_size` to be equal to `dataset.num_samples` to generate everything in one go.
