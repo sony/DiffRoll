@@ -510,7 +510,7 @@ class SpecRollDiffusion(pl.LightningModule):
 #             self.log("Test/Note_F1", f)         
 #         self.log("Test/Frame_F1", frame_f1)        
         
-    def predict_step(self, batch, batch_idx): 
+    def predict_step(self, batch, batch_idx):
         noise = batch[0]
         waveform = batch[1]
         if self.hparams.inpainting_f or self.hparams.inpainting_t:
@@ -540,18 +540,21 @@ class SpecRollDiffusion(pl.LightningModule):
         if batch_idx==0:
             self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
                                   'Test/spec',
-                                  batch_idx)                
+                                  batch_idx)
             for noise_npy, t_index in noise_list:
                 if (t_index+1)%10==0: 
                     fig, ax = plt.subplots(2,2)
                     for idx, j in enumerate(noise_npy):
-                        # j (1, T, F)
-                        ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
-                        self.logger.experiment.add_figure(
-                            f"Test/pred",
-                            fig,
-                            global_step=self.hparams.timesteps-t_index)
-                        plt.close()
+                        if idx<4:
+                            # j (1, T, F)
+                            ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
+                            self.logger.experiment.add_figure(
+                                f"Test/pred",
+                                fig,
+                                global_step=self.hparams.timesteps-t_index)
+                            plt.close()
+                        else:
+                            break
 
             fig1, ax1 = plt.subplots(2,2)
             fig2, ax2 = plt.subplots(2,2)
@@ -605,11 +608,11 @@ class SpecRollDiffusion(pl.LightningModule):
 
             clean_notes = (i_est[:,1]-i_est[:,0])>self.hparams.generation_filter
 
-            save_midi(os.path.join('./', f'clean_midi_{roll_idx}.mid'),
+            save_midi(os.path.join('./', f'clean_midi_e{batch_idx}_{roll_idx}.mid'),
                       p_est[clean_notes],
                       i_est[clean_notes],
                       [127]*len(p_est))
-            save_midi(os.path.join('./', f'raw_midi_{roll_idx}.mid'),
+            save_midi(os.path.join('./', f'raw_midi_{batch_idx}_{roll_idx}.mid'),
                       p_est,
                       i_est,
                       [127]*len(p_est))
