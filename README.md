@@ -1,3 +1,6 @@
+- __Demo__: https://sony.github.io/DiffRoll/
+- __Paper__: https://arxiv.org/abs/2210.05148
+
 # Table of Content
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=4 orderedList=false} -->
 
