@@ -116,6 +116,9 @@ For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then s
 python test.py gpus=[0]
 ```
 
+If you don't have the MAPS and MAESTRO datasets ready yet, you can simply add `download=True` in the command above to automatically download and set things up.
+
+- `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
 
 
 ## Inpainting
@@ -131,7 +134,11 @@ For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then s
 python sampling.py task=inpainting task.inpainting_t=[0,100]
 ```
 
+If you don't have the MAPS and MAESTRO datasets ready yet, you can simply add `download=True` in the command above to automatically download and set things up.
+
 - `task.inpainting_t` sets the frames to be masked to -1 in the spectrogram. `[0,100]` means that frame 0-99 will be masked to -1.
+- `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
+
 
 ## Generation
 First, open `config/sampling.yaml`, and then specify the weight to use in `checkpoint_path`.
