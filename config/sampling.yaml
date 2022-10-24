@@ -3,28 +3,10 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './dataset'
-checkpoint_path: 'weights/MAESTRO_pretrain_L15C512_k=9_pad=1.ckpt' # will be ignored in train.py
+checkpoint_path: 'weights/Pretrain_MAESTRO-retrain_MAESTRO-k=9.ckpt' # will be ignored in train.py
 
-dataset:
-    # -----------For generation-----------
-    # num_samples: 4
-    # -----------For inpainting-----------
-    name: 'MAPS'
-    args:
-        root: ${data_root} 
-        groups: 'test'
-        data_type: 'MUS'
-        download: False
-        preload: False
-        sequence_length: ${sequence_length}
-        seed: 42
-        hop_length: ${hop_length}
-        max_midi: 108
-        min_midi: 21
-        ext_audio: '.wav'
-        sampling_rate: 16000
-        overlap: True
-    num_samples: 4
+
+
         
 dataloader:
     batch_size: 4
@@ -41,3 +23,4 @@ trainer:
 defaults:
     - model: ClassifierFreeDiffRoll
     - task: generation
+    - dataset: Sampling

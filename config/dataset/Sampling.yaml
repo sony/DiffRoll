@@ -1,0 +1,16 @@
+name: 'MAPS'
+args:
+    root: ${data_root} 
+    groups: 'test'
+    data_type: 'MUS'
+    download: False
+    preload: False
+    sequence_length: ${sequence_length}
+    seed: 42
+    hop_length: ${hop_length}
+    max_midi: 108
+    min_midi: 21
+    ext_audio: '.wav'
+    sampling_rate: 16000
+    overlap: True
+num_samples: 4

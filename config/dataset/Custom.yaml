@@ -1,14 +1,8 @@
 name: 'Custom'
 args:
-    root: ${data_root} 
-    groups: 'test'            
-    download: False
-    preload: False
-    sequence_length: ${sequence_length}
-    seed: 42
-    hop_length: ${hop_length}
-    max_midi: 108
-    min_midi: 21
-    ext_audio: '.wav'
-    sampling_rate: 16000
+    audio_path: 'my_audio'
+    audio_ext: 'mp3'
+    max_segment_samples: 327680
+    sample_rate: 16000
+num_samples: 4
     
