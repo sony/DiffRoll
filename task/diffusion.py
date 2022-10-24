@@ -513,8 +513,8 @@ class SpecRollDiffusion(pl.LightningModule):
     def predict_step(self, batch, batch_idx):
         noise = batch[0]
         waveform = batch[1]
-        if self.hparams.inpainting_f or self.hparams.inpainting_t:
-            roll_label = batch[2]
+        # if self.hparams.inpainting_f or self.hparams.inpainting_t:
+        #     roll_label = batch[2]
         
         device = noise.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
@@ -558,9 +558,9 @@ class SpecRollDiffusion(pl.LightningModule):
 
             fig1, ax1 = plt.subplots(2,2)
             fig2, ax2 = plt.subplots(2,2)
-            for idx in range(4):
+            for idx, roll_pred_i in enumerate(roll_pred):
                 
-                ax2.flatten()[idx].imshow((roll_pred[idx][0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
+                ax2.flatten()[idx].imshow((roll_pred_i[0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
                 self.logger.experiment.add_figure(
                     f"Test/pred_roll",
                     fig2,
@@ -642,9 +642,9 @@ class SpecRollDiffusion(pl.LightningModule):
             
     def visualize_figure(self, tensors, tag, batch_idx):
         fig, ax = plt.subplots(2,2)
-        for idx in range(4): # visualize only 4 piano rolls
+        for idx, tensor in enumerate(tensors): # visualize only 4 piano rolls
             # roll_pred (1, T, F)
-            ax.flatten()[idx].imshow(tensors[idx][0].T.cpu(), aspect='auto', origin='lower')
+            ax.flatten()[idx].imshow(tensor[0].T.cpu(), aspect='auto', origin='lower')
         self.logger.experiment.add_figure(f"{tag}", fig, global_step=self.current_epoch)
         plt.close()
         
@@ -1071,7 +1071,7 @@ class SpecRollDiffusion(pl.LightningModule):
         # x_t (B, 1, T, F)
         # clearing figures to prevent slow down in each iteration.d
         fig.canvas.draw()
-        for idx in range(4): # visualize only 4 piano rolls
+        for idx in range(len(noise_list[0][0])): # visualize only 4 piano rolls
             ax_flat[idx].cla()
             ax_flat[4+idx].cla()
             caxs[idx].cla()
