@@ -1,0 +1,18 @@
+name: 'inpainting'
+lr: ${learning_rate}
+timesteps: 200
+loss_type: 'l2'
+loss_keys:
+    - 'diffusion_loss'
+frame_threshold: 0.5
+beta_start: 0.0001
+beta_end: 0.02
+training:
+    mode: 'x_0' # either 'x_0' or epsilon
+sampling:
+    type: 'inpainting_ddpm_x0'
+    w: 0.5
+generation_filter: 0.02
+inpainting_t: null
+inpainting_f: null 
+    
