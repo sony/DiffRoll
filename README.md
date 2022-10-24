@@ -100,8 +100,25 @@ python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spe
 - `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1-pretraining-on-maestro-using-only-piano-rolls)
 - other arguments are same as [Supervised Training](#supervised-training).
 
+# Testing
+The training script above already includes the testing. This section is for you to re-run the test set and get the transcription score.
+
+First, open `config/test.yaml`, and then specify the weight to use in `checkpoint_path`.
+
+For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
+
+You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214252#.Y00_xUzP260). After downloading, put them inside the folder `weights`.
+
+```
+python test.py gpus=[0] dataset=MAPS
+```
+
+- `dataset` sets the dataset to be trained on. Can be `MAESTRO` or `MAPS`.
+
 # Sampling
 You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214252#.Y00_xUzP260). After downloading, put them inside the folder `weights`.
+
+The folder `my_audio` already includes four samples as a demonstration. You can put your own audio clips inside this folder.
 
 ## Transcription
 This script supports only transcribing music from either MAPS or MAESTRO.
@@ -113,11 +130,11 @@ First, open `config/test.yaml`, and then specify the weight to use in `checkpoin
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
-python test.py gpus=[0]
+python sampling.py task=transcription dataloader.batch_size=4 gpus=[0] download=False
 ```
 
-If you don't have the MAPS and MAESTRO datasets ready yet, you can simply add `download=True` in the command above to automatically download and set things up.
-
+- `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
+- `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
 - `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
 
 
@@ -131,12 +148,12 @@ First, open `config/sampling.yaml`, and then specify the weight to use in `check
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
-python sampling.py task=inpainting task.inpainting_t=[0,100]
+python sampling.py task=inpainting task.inpainting_t=[0,100] dataloader.batch_size=4 gpus=[0] download=False
 ```
 
-If you don't have the MAPS and MAESTRO datasets ready yet, you can simply add `download=True` in the command above to automatically download and set things up.
-
+- `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
 - `task.inpainting_t` sets the frames to be masked to -1 in the spectrogram. `[0,100]` means that frame 0-99 will be masked to -1.
+- `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
 - `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
 
 
@@ -146,7 +163,7 @@ First, open `config/sampling.yaml`, and then specify the weight to use in `check
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
-python sampling.py task=generation dataset.num_samples=8 dataloader.batch_size=6
+python sampling.py task=generation dataset.num_samples=8 dataloader.batch_size=4
 
 ```
 
