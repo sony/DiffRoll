@@ -130,13 +130,14 @@ First, open `config/test.yaml`, and then specify the weight to use in `checkpoin
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
-python sampling.py task=transcription dataloader.batch_size=4 gpus=[0] download=False
+python sampling.py task=transcription dataloader.batch_size=4 dataset=Custom dataset.args.audio_ext=mp3 dataset.args.max_segment_samples=327680 gpus=[0]
 ```
 
-- `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
 - `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
-- `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
-
+- `dataset` when setting to `Custom`, it load audio clips from the folder `my_audio`.
+- `dataset.args.audio_ext` sets the file extension to be loaded. The default extension is `mp3`.
+- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If `dataset.args.max_segment_samples` is smaller than the actual audio clip duration, the first `dataset.args.max_segment_samples` samples of the audio clip would be loaded. If `dataset.args.max_segment_samples` is larger than the actual audio clip, the audio clip will be padded to `dataset.args.max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
+- `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
 
 ## Inpainting
 This script supports only transcribing music from either MAPS or MAESTRO.
@@ -148,13 +149,15 @@ First, open `config/sampling.yaml`, and then specify the weight to use in `check
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
 ```
-python sampling.py task=inpainting task.inpainting_t=[0,100] dataloader.batch_size=4 gpus=[0] download=False
+python sampling.py task=inpainting task.inpainting_t=[0,100] dataloader.batch_size=4 dataset=Custom dataset.args.audio_ext=mp3 dataset.args.max_segment_samples=327680 gpus=[0]
 ```
 
 - `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
 - `task.inpainting_t` sets the frames to be masked to -1 in the spectrogram. `[0,100]` means that frame 0-99 will be masked to -1.
 - `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
-- `download` should be set to `True` if you are running the script for the first time to download and setup the dataset automatically. You can set it to `False` if you already have the dataset downloaded. By default, it is set to `False`.
+- `dataset` when setting to `Custom`, it load audio clips from the folder `my_audio`.
+- `dataset.args.audio_ext` sets the file extension to be loaded. The default extension is `mp3`.
+- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If `dataset.args.max_segment_samples` is smaller than the actual audio clip duration, the first `dataset.args.max_segment_samples` samples of the audio clip would be loaded. If `dataset.args.max_segment_samples` is larger than the actual audio clip, the audio clip will be padded to `dataset.args.max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
 
 
 ## Generation
