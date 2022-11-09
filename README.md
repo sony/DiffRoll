@@ -107,7 +107,7 @@ First, open `config/test.yaml`, and then specify the weight to use in `checkpoin
 
 For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
 
-You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214252#.Y00_xUzP260). After downloading, put them inside the folder `weights`.
+You can download pretrained weights from [Zenodo](https://zenodo.org/record/7246522#.Y2tXoi0RphE). After downloading, put them inside the folder `weights`.
 
 ```
 python test.py gpus=[0] dataset=MAPS
@@ -116,7 +116,7 @@ python test.py gpus=[0] dataset=MAPS
 - `dataset` sets the dataset to be trained on. Can be `MAESTRO` or `MAPS`.
 
 # Sampling
-You can download pretrained weights from [Zenodo](https://zenodo.org/record/7214252#.Y00_xUzP260). After downloading, put them inside the folder `weights`.
+You can download pretrained weights from [Zenodo](https://zenodo.org/record/7246522#.Y2tXoi0RphE). After downloading, put them inside the folder `weights`.
 
 The folder `my_audio` already includes four samples as a demonstration. You can put your own audio clips inside this folder.
 
@@ -127,7 +127,7 @@ TODO: add support for transcribing any music
 
 First, open `config/test.yaml`, and then specify the weight to use in `checkpoint_path`.
 
-For example, if you want to use `Pretrain_MAESTRO-retrain_Both-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt'`.
+For example, if you want to use `Pretrain_MAESTRO-retrain_MAESTRO-k=9.ckpt`, then set  `checkpoint_path='weights/Pretrain_MAESTRO-retrain_MAESTRO-k=9.ckpt'`.
 
 ```
 python sampling.py task=transcription dataloader.batch_size=4 dataset=Custom dataset.args.audio_ext=mp3 dataset.args.max_segment_samples=327680 gpus=[0]
@@ -136,7 +136,7 @@ python sampling.py task=transcription dataloader.batch_size=4 dataset=Custom dat
 - `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
 - `dataset` when setting to `Custom`, it load audio clips from the folder `my_audio`.
 - `dataset.args.audio_ext` sets the file extension to be loaded. The default extension is `mp3`.
-- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If `dataset.args.max_segment_samples` is smaller than the actual audio clip duration, the first `dataset.args.max_segment_samples` samples of the audio clip would be loaded. If `dataset.args.max_segment_samples` is larger than the actual audio clip, the audio clip will be padded to `dataset.args.max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
+- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If it is smaller than the actual audio clip duration, the first `max_segment_samples` samples of the audio clip would be loaded. If it is larger than the actual audio clip, the audio clip will be padded to `max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
 - `gpus` sets which GPU to use. `gpus=[k]` means `device='cuda:k'`, `gpus=2` means [DistributedDataParallel](https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) (DDP) is used with two GPUs.
 
 ## Inpainting
@@ -157,8 +157,7 @@ python sampling.py task=inpainting task.inpainting_t=[0,100] dataloader.batch_si
 - `dataloader.batch_size` sets the batch size. You can set a higher number if your GPU has enough memory.
 - `dataset` when setting to `Custom`, it load audio clips from the folder `my_audio`.
 - `dataset.args.audio_ext` sets the file extension to be loaded. The default extension is `mp3`.
-- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If `dataset.args.max_segment_samples` is smaller than the actual audio clip duration, the first `dataset.args.max_segment_samples` samples of the audio clip would be loaded. If `dataset.args.max_segment_samples` is larger than the actual audio clip, the audio clip will be padded to `dataset.args.max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
-
+- `dataset.args.max_segment_samples` sets length of audio segment to be loaded. If it is smaller than the actual audio clip duration, the first `max_segment_samples` samples of the audio clip would be loaded. If it is larger than the actual audio clip, the audio clip will be padded to `max_segment_samples` with 0. The default value is `327680` which is around 10 seconds when `sample_rate=16000`.
 
 ## Generation
 First, open `config/sampling.yaml`, and then specify the weight to use in `checkpoint_path`.
