@@ -24,6 +24,8 @@ import os
 from mido import Message, MidiFile, MidiTrack
 from mir_eval.util import hz_to_midi
 
+import sys
+
 
 class DiscreteDiffusion(pl.LightningModule):
     def __init__(self,
@@ -44,13 +46,20 @@ class DiscreteDiffusion(pl.LightningModule):
         
         # define beta schedule
         # beta is variance
-        self.at, self.bt, self.ct, self.att, self.btt, self.ctt = alpha_schedule(
-            time_step=timesteps,
+        at, bt, ct, att, btt, ctt = alpha_schedule(
+            time_step=self.hparams.timesteps,
             N=3,
             **schedule_args
         )
         
-h        # calculations for diffusion q(x_t | x_{t-1}) and others
+        self.register_buffer('at', torch.tensor(at))
+        self.register_buffer('bt', torch.tensor(bt))
+        self.register_buffer('ct', torch.tensor(ct))
+        self.register_buffer('att', torch.tensor(att))
+        self.register_buffer('btt', torch.tensor(btt))
+        self.register_buffer('ctt', torch.tensor(ctt))
+        
+        # calculations for diffusion q(x_t | x_{t-1}) and others
 #         self.sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
 #         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
 
@@ -344,13 +353,16 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
     def visualize_figure(self, tensors, tag, batch_idx):
         fig, ax = plt.subplots(2,2)
         for idx, tensor in enumerate(tensors): # visualize only 4 piano rolls
-            # roll_pred (1, T, F)
-            ax.flatten()[idx].imshow(tensor[0].T.cpu(), aspect='auto', origin='lower')
+            if idx<4:
+                # roll_pred (1, T, F)
+                ax.flatten()[idx].imshow(tensor[0].T.cpu(), aspect='auto', origin='lower')
+            else:
+                break
         self.logger.experiment.add_figure(f"{tag}", fig, global_step=self.current_epoch)
         plt.close()
         
     def step(self, batch):
-        # batch["frame"] (B, 640, 88)
+        # batch["frame"] (B, 1, 640, 88)
         # batch["audio"] (B, L)
         if isinstance(batch, list):
             batch_size = batch[0]["frame"].shape[0]
@@ -374,14 +386,10 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
         
 
         noise = torch.randn_like(roll) # creating label noise
+        B, _, roll_T, roll_F = roll.shape
+        x_start = roll_to_log_onehot(roll, 3) #(B, 3, 640*88)
         
-        x_t = q_sample( # sampling noise at time t
-            x_start=roll,
-            t=t,
-            sqrt_alphas_cumprod=self.sqrt_alphas_cumprod,
-            sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod,
-            noise=noise)
-        
+        x_t = self.q_sample(x_start, t)
         
         
         # When debugging model is use, change waveform into roll
@@ -400,8 +408,8 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
                 sqrt_one_minus_alphas_cumprod=self.sqrt_one_minus_alphas_cumprod)
             
         elif self.hparams.training.mode == 'x_0':
-            pred_roll, spec = self(x_t, waveform, t) # predict the noise N(0, 1)
-            diffusion_loss = self.p_losses(roll, pred_roll, loss_type=self.hparams.loss_type)
+            pred_roll, spec = self(x_t.view(-1,3,roll_T,roll_F), waveform, t) # predict the noise N(0, 1)
+            diffusion_loss = self.p_losses(x_start.view(B, 3, roll_T, roll_F), pred_roll, loss_type=self.hparams.loss_type)
             if isinstance(batch, list): # when using multiple dataset do one more feedforward
 
                 x_t2 = q_sample( # sampling noise at time t
@@ -432,7 +440,8 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
         # pred_roll = torch.sigmoid(pred_roll) # to convert logit into probability
         # amt_loss = F.binary_cross_entropy(pred_roll, roll)
         
-
+        
+        pred_roll = torch.exp(pred_roll[:,1]).unsqueeze(1) # convert log pro back to prob (B, 1, 640, 88)
         
         if isinstance(batch, list):
             tensors = {
@@ -497,6 +506,8 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
             loss = F.mse_loss(label, prediction)
         elif loss_type == "huber":
             loss = F.smooth_l1_loss(label, prediction)
+        elif loss_type == "kl":
+            loss = F.kl_div(torch.log_softmax(prediction, 1), label, log_target=True)
         else:
             raise NotImplementedError()
 
@@ -651,6 +662,45 @@ h        # calculations for diffusion q(x_t | x_{t-1}) and others
         row1_txt = ax_flat[0].text(-400,45,f'Gaussian N(0,1)')
         row2_txt = ax_flat[4].text(-300,45,'x_{t-1}')
         
+    def q_sample(self, log_x_start, t): # diffusion step, q(xt|x0) and sample xt
+        log_EV_qxt_x0 = self.q_pred(log_x_start, t)
+        log_sample = log_sample_categorical(log_EV_qxt_x0)
+        return log_sample
+    
+    def q_pred(self, log_x_start, t):           # q(xt|x0)
+        # log_x_start: (B, classes+1, L)
+
+        # This part is manually added
+        log_at = torch.log(self.at)
+        log_bt = torch.log(self.bt)
+        log_ct = torch.log(self.ct)
+
+        log_cumprod_at = torch.log(self.att)
+        log_cumprod_bt = torch.log(self.btt)
+        log_cumprod_ct = torch.log(self.ctt)
+        log_1_min_ct = log_1_min_a(log_ct)
+        log_1_min_cumprod_ct = log_1_min_a(log_cumprod_ct)
+        # end of manually added
+
+    #     log_x_start is can be onehot or not
+        t = (t + (self.hparams.timesteps + 1))%(self.hparams.timesteps + 1) # When t>timesteps, it restarts from 0
+    #     print(f"{log_cumprod_at.shape=}")
+        log_cumprod_at = extract(log_cumprod_at, t, log_x_start.shape)         # at~
+    #     print(f"{log_cumprod_at.shape=}")
+        log_cumprod_bt = extract(log_cumprod_bt, t, log_x_start.shape)         # bt~
+        log_cumprod_ct = extract(log_cumprod_ct, t, log_x_start.shape)         # ct~
+        log_1_min_cumprod_ct = extract(log_1_min_cumprod_ct, t, log_x_start.shape)       # 1-ct~
+
+        log_probs = torch.cat(
+            [
+                log_add_exp(log_x_start[:,:-1,:]+log_cumprod_at, log_cumprod_bt), # probability of same class
+                log_add_exp(log_x_start[:,-1:,:]+log_1_min_cumprod_ct, log_cumprod_ct) # probability of being mask
+            ],
+            dim=1
+        )
+
+        return log_probs
+        
         
 def roll_to_log_onehot(x, num_classes):
     # x.shape (B, 88, T)
@@ -663,22 +713,22 @@ def roll_to_log_onehot(x, num_classes):
     log_x = torch.log(x_onehot.float().clamp(min=1e-30))
     return log_x
 
-    def alpha_schedule(time_step, N=100, att_1 = 0.99999, att_T = 0.000009, ctt_1 = 0.000009, ctt_T = 0.99999):
-        att = np.linspace(att_1, att_T, time_step)
-        ctt = np.linspace(ctt_1, ctt_T, time_step)
+def alpha_schedule(time_step, N=100, att_1 = 0.99999, att_T = 0.000009, ctt_1 = 0.000009, ctt_T = 0.99999):
+    att = np.linspace(att_1, att_T, time_step)
+    ctt = np.linspace(ctt_1, ctt_T, time_step)
 
-        att = np.concatenate(([1], att))
-        at = att[1:]/att[:-1]
+    att = np.concatenate(([1], att))
+    at = att[1:]/att[:-1]
 
-        ctt = np.concatenate(([0], ctt))
-        one_minus_ctt = 1 - ctt
-        one_minus_ct = one_minus_ctt[1:] / one_minus_ctt[:-1]
-        ct = 1-one_minus_ct
-        bt = (1-at-ct)/N
-        att = np.concatenate((att[1:], [1]))
-        ctt = np.concatenate((ctt[1:], [0]))
-        btt = (1-att-ctt)/N
-        return at, bt, ct, att, btt, ctt
+    ctt = np.concatenate(([0], ctt))
+    one_minus_ctt = 1 - ctt
+    one_minus_ct = one_minus_ctt[1:] / one_minus_ctt[:-1]
+    ct = 1-one_minus_ct
+    bt = (1-at-ct)/N
+    att = np.concatenate((att[1:], [1]))
+    ctt = np.concatenate((ctt[1:], [0]))
+    btt = (1-att-ctt)/N
+    return at, bt, ct, att, btt, ctt
     
     
 def log_1_min_a(a):
@@ -693,49 +743,11 @@ def extract(a, t, x_shape):
     out = a.gather(-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
-def q_sample(log_x_start, t): # diffusion step, q(xt|x0) and sample xt
-    log_EV_qxt_x0 = q_pred(log_x_start, t)
-    log_sample = log_sample_categorical(log_EV_qxt_x0)
-    return log_sample
+
 
 def log_sample_categorical(logits):           # use gumbel to sample onehot vector from log probability
     uniform = torch.rand_like(logits)
     gumbel_noise = -torch.log(-torch.log(uniform + 1e-30) + 1e-30)
     sample = (gumbel_noise + logits).argmax(dim=1)
-    print(f"{sample.shape=}")
     log_sample = roll_to_log_onehot(sample, 3) 
     return log_sample
-
-def q_pred(log_x_start, t):           # q(xt|x0)
-    # log_x_start: (B, classes+1, L)
-    
-    # This part is manually added
-    log_at = torch.log(torch.tensor(at))
-    log_bt = torch.log(torch.tensor(bt))
-    log_ct = torch.log(torch.tensor(ct))
-
-    log_cumprod_at = torch.log(torch.tensor(att))
-    log_cumprod_bt = torch.log(torch.tensor(btt))
-    log_cumprod_ct = torch.log(torch.tensor(ctt))
-    log_1_min_ct = log_1_min_a(log_ct)
-    log_1_min_cumprod_ct = log_1_min_a(log_cumprod_ct)
-    # end of manually added
-    
-#     log_x_start is can be onehot or not
-    t = (t + (num_timesteps + 1))%(num_timesteps + 1) # When t>num_timesteps, it restarts from 0
-#     print(f"{log_cumprod_at.shape=}")
-    log_cumprod_at = extract(log_cumprod_at, t, log_x_start.shape)         # at~
-#     print(f"{log_cumprod_at.shape=}")
-    log_cumprod_bt = extract(log_cumprod_bt, t, log_x_start.shape)         # bt~
-    log_cumprod_ct = extract(log_cumprod_ct, t, log_x_start.shape)         # ct~
-    log_1_min_cumprod_ct = extract(log_1_min_cumprod_ct, t, log_x_start.shape)       # 1-ct~
-    
-    log_probs = torch.cat(
-        [
-            log_add_exp(log_x_start[:,:-1,:]+log_cumprod_at, log_cumprod_bt), # probability of same class
-            log_add_exp(log_x_start[:,-1:,:]+log_1_min_cumprod_ct, log_cumprod_ct) # probability of being mask
-        ],
-        dim=1
-    )
-
-    return log_probs
