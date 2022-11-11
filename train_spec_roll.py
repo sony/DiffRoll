@@ -45,6 +45,13 @@ def main(cfg):
                f"p={cfg.model.args.spec_dropout}-k={cfg.model.args.kernel_size}-" + \
                f"dia={cfg.model.args.dilation_base}-{cfg.model.args.dilation_bound}-" + \
                f"{cfg.dataset.name}"
+    elif cfg.model.name == 'DiscreteClassifierFreeDiffRoll':
+        name = f"{cfg.model.name}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
+               f"{cfg.task.training.mode}-" + \
+               f"{cfg.task.sampling.type}-w={cfg.task.sampling.w}-" + \
+               f"p={cfg.model.args.spec_dropout}-k={cfg.model.args.kernel_size}-" + \
+               f"dia={cfg.model.args.dilation_base}-{cfg.model.args.dilation_bound}-" + \
+               f"{cfg.dataset.name}"        
     else:
         name = f"{cfg.model.name}-{cfg.task.sampling.type}-L{cfg.model.args.residual_layers}-C{cfg.model.args.residual_channels}-" + \
                f"beta{cfg.task.beta_end}-{cfg.task.training.mode}-" + \
