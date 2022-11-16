@@ -13,6 +13,7 @@ from mir_eval.util import midi_to_hz
 import numpy as np
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import math
 import torchaudio
 MIN_MIDI = 21
 MAX_MIDI = 108
@@ -90,7 +91,7 @@ class DiscreteDiffusion(pl.LightningModule):
         # self.log("Val/amt_loss", losses['amt_loss'])
         
         if batch_idx == 0:
-            self.visualize_figure(tensors['pred_roll'], 'Val/pred_roll', batch_idx)
+            self.visualize_figure(tensors['pred_roll'].exp(), 'Val/pred_roll', batch_idx)
             
             if hasattr(self.hparams, 'condition'): # the condition for classifier free
                 if self.hparams.condition == 'trainable_spec':
@@ -409,8 +410,9 @@ class DiscreteDiffusion(pl.LightningModule):
             
         elif self.hparams.training.mode == 'x_0':
             pred_roll, spec = self(x_t.view(-1,3,roll_T,roll_F), waveform, t) # predict the noise N(0, 1)
+            
             diffusion_loss = self.p_losses(x_start.view(B, 3, roll_T, roll_F), pred_roll, loss_type=self.hparams.loss_type)
-            if isinstance(batch, list): # when using multiple dataset do one more feedforward
+            if isinstance(batch, list): # when using multiple datdaset do one more feedforward
 
                 x_t2 = q_sample( # sampling noise at time t
                     x_start=roll2,
@@ -482,7 +484,10 @@ class DiscreteDiffusion(pl.LightningModule):
         self.inner_loop.refresh()
         self.inner_loop.reset()
         
-        noise = torch.randn_like(roll)
+        noise = torch.zeros_like(roll) # (B, 1, T, F)
+        noise = noise.repeat(1,3,1,1) # (B, 3, T, F)
+        noise[:,:2] = math.log(1e-30)
+        
         noise_list = []
         noise_list.append((noise, self.hparams.timesteps))
 
@@ -503,7 +508,7 @@ class DiscreteDiffusion(pl.LightningModule):
         if loss_type == 'l1':
             loss = F.l1_loss(label, prediction)
         elif loss_type == 'l2':
-            loss = F.mse_loss(label, prediction)
+            loss = F.mse_loss(label[:,:-1], prediction)
         elif loss_type == "huber":
             loss = F.smooth_l1_loss(label, prediction)
         elif loss_type == "kl":
