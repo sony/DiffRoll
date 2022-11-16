@@ -750,7 +750,7 @@ class DiscreteClassifierFreeDiffRoll(DiscreteDiffusion):
             ])
             
         self.skip_projection = Conv1d(residual_channels, residual_channels, 1)
-        self.output_projection = Conv1d(residual_channels, 3*88, 1)
+        self.output_projection = Conv1d(residual_channels, 2*88, 1)
         nn.init.zeros_(self.output_projection.weight)
         
         self.normalize_spec = Normalization(0, 1, norm_args[2])   
@@ -807,7 +807,7 @@ class DiscreteClassifierFreeDiffRoll(DiscreteDiffusion):
         x = F.relu(x)
         x = self.output_projection(x) #(B, F, T)
         B, _, T, = x.shape
-        x = x.view(B, 3, 88, T)
+        x = x.view(B, 2, 88, T)
         return x.transpose(2,3), spectrogram #(B, T, F)
     
     

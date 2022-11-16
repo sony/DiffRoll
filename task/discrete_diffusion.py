@@ -48,7 +48,7 @@ class DiscreteDiffusion(pl.LightningModule):
         # beta is variance
         at, bt, ct, att, btt, ctt = alpha_schedule(
             time_step=self.hparams.timesteps,
-            N=3,
+            N=2,
             **schedule_args
         )
         
@@ -507,7 +507,7 @@ class DiscreteDiffusion(pl.LightningModule):
         elif loss_type == "huber":
             loss = F.smooth_l1_loss(label, prediction)
         elif loss_type == "kl":
-            loss = F.kl_div(torch.log_softmax(prediction, 1), label, log_target=True)
+            loss = F.kl_div(torch.log_softmax(prediction, 1), label[:,:-1], log_target=True)
         else:
             raise NotImplementedError()
 
