@@ -53,12 +53,12 @@ class DiscreteDiffusion(pl.LightningModule):
             **schedule_args
         )
         
-        self.register_buffer('at', torch.tensor(at))
-        self.register_buffer('bt', torch.tensor(bt))
-        self.register_buffer('ct', torch.tensor(ct))
-        self.register_buffer('att', torch.tensor(att))
-        self.register_buffer('btt', torch.tensor(btt))
-        self.register_buffer('ctt', torch.tensor(ctt))
+        self.register_buffer('at', torch.tensor(at).float())
+        self.register_buffer('bt', torch.tensor(bt).float())
+        self.register_buffer('ct', torch.tensor(ct).float())
+        self.register_buffer('att', torch.tensor(att).float())
+        self.register_buffer('btt', torch.tensor(btt).float())
+        self.register_buffer('ctt', torch.tensor(ctt).float())
         
         self.register_buffer('log_at', torch.log(self.at))
         self.register_buffer('log_bt', torch.log(self.bt))
@@ -536,8 +536,13 @@ class DiscreteDiffusion(pl.LightningModule):
         # x is x_t, when t=T it is pure Gaussian
         
         # boardcasting t_index into a tensor
-        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
         
+        
+        t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
+        print(f'{x.device=}')
+        print(f'{x.type()=}')
+        print(f'{t_tensor.device=}')
+        print(f'{waveform.device=}')
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
         x0_pred_c, spec = self(x, waveform, t_tensor)
@@ -549,6 +554,8 @@ class DiscreteDiffusion(pl.LightningModule):
         log_x0_pred = torch.log_softmax(x0_pred, 1)
         
         log_model_pred = self.posterior(log_x0_pred, x, t_tensor)
+        
+        print(f'{log_model_pred.device=}')
     
     
         # if t_index == 0:
@@ -581,74 +588,39 @@ class DiscreteDiffusion(pl.LightningModule):
 
         batch_size = log_x0.size()[0]
         onehot_x_t = log_xt.argmax(1) #
-        mask = (onehot_x_t == 2).unsqueeze(1)   ### shape: (#batch, 1, #token)
-        log_one_vector = torch.zeros(batch_size, 1, 1).type_as(log_xt)
-        log_zero_vector = torch.log(log_one_vector+eps).expand(-1, -1, log_xt.shape[-1])
+        mask = (onehot_x_t == 2).unsqueeze(1)   ### shape: (#batch, 1, #token) for original VQ-diffusion
+        log_one_vector = torch.zeros(batch_size, 1, log_xt.shape[-2], log_xt.shape[-1]).type_as(log_xt) # (4,1,640,88)
+        log_zero_vector = torch.log(log_one_vector+eps) # (4,1,640,88)
         ### ??? why don't use -70.0 ???
 
-        log_qt = self.t_steps(log_xt, t)  # q(xt|x0)
+        
+        log_qt = self.q_pred(log_xt, t)  # q(xt|x0)
+        
         ###??? why input is log_x_t ???
         log_qt = log_qt[:,:-1,:]   ### omit [MASK]
         log_cum_ct = extract(self.log_cumprod_ct, t, log_x0.shape)  ### self.log_cumprod_ct[t] and reshape
-        ct_cumprod_vector = log_cum_ct.expand(-1, self.K, -1)
+        ct_cumprod_vector = log_cum_ct.expand(-1, 2, -1, -1)
         # ct_cumprod_vector = torch.cat((ct_cumprod_vector, log_one_vector), dim=1)
         log_qt = (~mask)*log_qt + mask*ct_cumprod_vector   ### ???????????
         
 
-        log_qt_one_timestep = self.one_step(log_xt, t)        # q(xt|x{t-1})???
+        log_qt_one_timestep = self.q_pred_one_timestep(log_xt, t)        # q(xt|x{t-1})??? (4,3,640,88)
         log_qt_one_timestep = torch.cat((log_qt_one_timestep[:,:-1,:], log_zero_vector), dim=1)
-        log_ct = extract(self.log_ct, t, log_x0.shape)         ### self.log_ct[t] and reshape
-        ct_vector = log_ct.expand(-1, self.K, -1)
+        log_ct = extract(self.log_ct, t, log_x0.shape)         ### self.log_ct[t] and reshape (4,1,1,1)
+        ct_vector = log_ct.repeat(1, 2, log_xt.shape[-2], log_xt.shape[-1]).type_as(log_xt)
         ct_vector = torch.cat((ct_vector, log_one_vector), dim=1)
         log_qt_one_timestep = (~mask)*log_qt_one_timestep + mask*ct_vector
         
         ####################################################3
         # q(x{t-1}|xt, x0) = q(xt|x{t-1},x0)q(x{t-1}|x0) / q(xt|x0)
         #                  = q(xt|x{t-1})q(x{t-1}|x0) / q(xt|x0)
+        
         q = log_x0[:,:-1,:] - log_qt
         q = torch.cat((q, log_zero_vector), dim=1)
         q_log_sum_exp = torch.logsumexp(q, dim=1, keepdim=True)
         q = q - q_log_sum_exp
-        log_EV_xtmin_given_xt_given_xstart = self.t_steps(q, t-1) + log_qt_one_timestep + q_log_sum_exp
-        # t-1 ??? even though t might be 0?????????
+        log_EV_xtmin_given_xt_given_xstart = self.q_pred(q, t-1) + log_qt_one_timestep + q_log_sum_exp        # t-1 ??? even though t might be 0?????????
         return torch.clamp(log_EV_xtmin_given_xt_given_xstart, log_eps, 0)
-    
-    def t_steps(self, log_x0, t):
-        """
-        forward diffusion q(xt|x0)
-        Args:
-            log_x0: shape (#batch, #class, #token)
-                    log_x0 can be onehot or not
-
-            t: shape (#batch,)
-
-        Return: forward diffusion q(xt|x0)
-        """
-        # t can be -1, 0, 1, ..., T
-        t = (t + self.hparams.timesteps + 1) % (self.hparams.timesteps + 1)
-
-        shape = log_x0.shape
-        log_cum_at = extract(self.log_cumprod_at, t, shape)
-        log_cum_bt = extract(self.log_cumprod_bt, t, shape)
-        log_cum_ct = extract(self.log_cumprod_ct, t, shape)
-        log_1_min_cum_ct = extract(self.log_1_min_cumprod_ct, t, shape)
-
-        #############################################
-        # pC_t = att pC_0 + btt (1 - pM_0)
-        # pM_t = 1 + (pM_0 - 1)(1 - ctt)
-        #      = (1 - ctt) pM_0 + ctt
-        #############################################
-        log_probs = torch.cat(
-            [
-                log_add_exp(log_x0[:,:-1,:] + log_cum_at, log_cum_bt),   ### If pM_0 == 0
-                log_add_exp(log_x0[:,-1:,:] + log_1_min_cum_ct, log_cum_ct)
-            ],
-            dim=1
-        )
-
-        return log_probs
-    
-    
     
     def generation_ddpm_x0(self, x, waveform, t_index):
         # x is x_t, when t=T it is pure Gaussian
@@ -744,30 +716,42 @@ class DiscreteDiffusion(pl.LightningModule):
         log_sample = log_sample_categorical(log_EV_qxt_x0)
         return log_sample
     
+    def q_pred_one_timestep(self, log_x_t, t):         # q(xt|xt_1)
+        log_at = extract(self.log_at, t, log_x_t.shape)             # at
+        log_bt = extract(self.log_bt, t, log_x_t.shape)             # bt
+        log_ct = extract(self.log_ct, t, log_x_t.shape)             # ct
+        log_1_min_ct = extract(self.log_1_min_ct, t, log_x_t.shape)          # 1-ct
+
+        log_probs = torch.cat(
+            [
+                log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt),
+                log_add_exp(log_x_t[:, -1:, :] + log_1_min_ct, log_ct)
+            ],
+            dim=1
+        )
+
+        return log_probs    
+    
     def q_pred(self, log_x_start, t):           # q(xt|x0)
         # log_x_start: (B, classes+1, L)
-
-        # This part is manually added ===TODO: Need cleaning====
-        log_at = torch.log(self.at)
-        log_bt = torch.log(self.bt)
-        log_ct = torch.log(self.ct)
-
-        log_cumprod_at = torch.log(self.att)
-        log_cumprod_bt = torch.log(self.btt)
-        log_cumprod_ct = torch.log(self.ctt)
-        log_1_min_ct = log_1_min_a(log_ct)
-        log_1_min_cumprod_ct = log_1_min_a(log_cumprod_ct)
-        # end of manually added
+        # same as t_steps in Sony's code
 
     #     log_x_start is can be onehot or not
         t = (t + (self.hparams.timesteps + 1))%(self.hparams.timesteps + 1) # When t>timesteps, it restarts from 0
     #     print(f"{log_cumprod_at.shape=}")
-        log_cumprod_at = extract(log_cumprod_at, t, log_x_start.shape)         # at~
+        log_cumprod_at = extract(self.log_cumprod_at, t, log_x_start.shape)         # at~
     #     print(f"{log_cumprod_at.shape=}")
-        log_cumprod_bt = extract(log_cumprod_bt, t, log_x_start.shape)         # bt~
-        log_cumprod_ct = extract(log_cumprod_ct, t, log_x_start.shape)         # ct~
-        log_1_min_cumprod_ct = extract(log_1_min_cumprod_ct, t, log_x_start.shape)       # 1-ct~
+        log_cumprod_bt = extract(self.log_cumprod_bt, t, log_x_start.shape)         # bt~
+        log_cumprod_ct = extract(self.log_cumprod_ct, t, log_x_start.shape)         # ct~
+        log_1_min_cumprod_ct = extract(self.log_1_min_cumprod_ct, t, log_x_start.shape)       # 1-ct~
 
+        
+        #############################################
+        # pC_t = att pC_0 + btt (1 - pM_0)
+        # pM_t = 1 + (pM_0 - 1)(1 - ctt)
+        #      = (1 - ctt) pM_0 + ctt
+        #############################################        
+        
         log_probs = torch.cat(
             [
                 log_add_exp(log_x_start[:,:-1,:]+log_cumprod_at, log_cumprod_bt), # probability of same class

@@ -2,8 +2,8 @@ gpus: 1
 hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
-data_root: './dataset'
-checkpoint_path: 'weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt' # will be ignored in train.py
+data_root: '../MusicDataset'
+checkpoint_path: 'weight/last_patched.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
         
@@ -24,5 +24,5 @@ trainer:
     gpus: ${gpus}
     
 defaults:
-    - model: ClassifierFreeDiffRoll
+    - model: DiscreteClassifierFreeDiffRoll
     - dataset: MAPS
