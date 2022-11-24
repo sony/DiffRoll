@@ -202,10 +202,9 @@ class DiscreteDiffusion(pl.LightningModule):
                                           repeat_delay=1000)
             ani.save('algo2.gif', dpi=80, writer='imagemagick')
             #======== Animation saved ===========
-              
             
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
-                                                                        roll_pred.flatten()>self.hparams.frame_threshold,
+                                                                        roll_pred[:,1].flatten()>self.hparams.frame_threshold, # extract only the note on probability
                                                                         average='binary')
         
         for sample_idx, (roll_pred_i, roll_label_i) in enumerate(zip(roll_pred, roll_label.numpy())):
@@ -539,10 +538,6 @@ class DiscreteDiffusion(pl.LightningModule):
         
         
         t_tensor = torch.tensor(t_index).repeat(x.shape[0]).to(x.device)
-        print(f'{x.device=}')
-        print(f'{x.type()=}')
-        print(f'{t_tensor.device=}')
-        print(f'{waveform.device=}')
         # Equation 11 in the paper
         # Use our model (noise predictor) to predict the mean 
         x0_pred_c, spec = self(x, waveform, t_tensor)
@@ -554,8 +549,6 @@ class DiscreteDiffusion(pl.LightningModule):
         log_x0_pred = torch.log_softmax(x0_pred, 1)
         
         log_model_pred = self.posterior(log_x0_pred, x, t_tensor)
-        
-        print(f'{log_model_pred.device=}')
     
     
         # if t_index == 0:
