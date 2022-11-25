@@ -68,8 +68,8 @@ class DiscreteDiffusion(pl.LightningModule):
         self.register_buffer('log_cumprod_bt', torch.log(self.btt))
         self.register_buffer('log_cumprod_ct', torch.log(self.ctt))
         
-        self.register_buffer('log_1_min_ct', torch.log(self.log_ct))
-        self.register_buffer('log_1_min_cumprod_ct', torch.log(self.log_cumprod_ct))          
+        self.register_buffer('log_1_min_ct', log_1_min_a(self.log_ct))
+        self.register_buffer('log_1_min_cumprod_ct', log_1_min_a(self.log_cumprod_ct))          
         
         # calculations for diffusion q(x_t | x_{t-1}) and others
 #         self.sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
@@ -549,6 +549,10 @@ class DiscreteDiffusion(pl.LightningModule):
         log_x0_pred = torch.log_softmax(x0_pred, 1)
         
         log_model_pred = self.posterior(log_x0_pred, x, t_tensor)
+        
+        if torch.isnan(log_model_pred).sum()>0:
+#             torch.save(log_model_pred, 'log_model_pred.pt')
+            sys.exit()
     
     
         # if t_index == 0:
@@ -576,6 +580,10 @@ class DiscreteDiffusion(pl.LightningModule):
         # notice that log_xt is onehot
         assert t.min().item() >= 0 and t.max().item() < self.hparams.timesteps
 
+        if torch.isnan(log_xt).sum()>0:
+            print(f"line 584 log_xt has nan")
+            sys.exit()        
+        
         eps = 1.0e-30
         log_eps = -70
 
@@ -612,7 +620,22 @@ class DiscreteDiffusion(pl.LightningModule):
         q = torch.cat((q, log_zero_vector), dim=1)
         q_log_sum_exp = torch.logsumexp(q, dim=1, keepdim=True)
         q = q - q_log_sum_exp
+        if torch.isnan(q).sum()>0:
+            print(f"q has nan")
+            sys.exit()
+        
+        if torch.isnan(q_log_sum_exp).sum()>0:
+            print(f"q_log_sum_exp has nan")
+            sys.exit()        
         log_EV_xtmin_given_xt_given_xstart = self.q_pred(q, t-1) + log_qt_one_timestep + q_log_sum_exp        # t-1 ??? even though t might be 0?????????
+        if torch.isnan(self.q_pred(q, t-1)).sum()>0:
+            print(f"self.q_pred(q, t-1) has nan")
+            sys.exit()                  
+        
+        if torch.isnan(log_EV_xtmin_given_xt_given_xstart).sum()>0:
+            print(f"log_EV_xtmin_given_xt_given_xstart has nan")
+            sys.exit()          
+        
         return torch.clamp(log_EV_xtmin_given_xt_given_xstart, log_eps, 0)
     
     def generation_ddpm_x0(self, x, waveform, t_index):
@@ -714,7 +737,33 @@ class DiscreteDiffusion(pl.LightningModule):
         log_bt = extract(self.log_bt, t, log_x_t.shape)             # bt
         log_ct = extract(self.log_ct, t, log_x_t.shape)             # ct
         log_1_min_ct = extract(self.log_1_min_ct, t, log_x_t.shape)          # 1-ct
+        
+        if torch.isnan(self.log_1_min_ct).sum()>0:
+            print(f"self.log_1_min_ct has nan")
+            sys.exit()             
 
+        
+        if torch.isnan(log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt)).sum()>0:
+            print(f"log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt) has nan")
+            sys.exit()
+            
+        if torch.isnan(log_1_min_ct).sum()>0:
+            print(f"log_1_min_ct has nan")
+            sys.exit()                  
+            
+        if torch.isnan(log_x_t[:, -1:, :]).sum()>0:
+            print(f"log_x_t[:, -1:, :] has nan")
+            sys.exit()
+            
+        if torch.isnan(log_x_t[:, -1:, :] + log_1_min_ct).sum()>0:
+            print(f"log_x_t[:, -1:, :] + log_1_min_ct has nan")
+            sys.exit()
+                         
+            
+        if torch.isnan(log_add_exp(log_x_t[:, -1:, :] + log_1_min_ct, log_ct)).sum()>0:
+            print(f"log_add_exp(log_x_t[:, -1:, :] + log_1_min_ct, log_ct) has nan")
+            sys.exit()                   
+        
         log_probs = torch.cat(
             [
                 log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt),
@@ -805,3 +854,36 @@ def log_sample_categorical(logits):           # use gumbel to sample onehot vect
     sample = (gumbel_noise + logits).argmax(dim=1)
     log_sample = roll_to_log_onehot(sample, 3) 
     return log_sample
+
+def save_midi(path, pitches, intervals, velocities):
+    """
+    Save extracted notes as a MIDI file
+    Parameters
+    ----------
+    path: the path to save the MIDI file
+    pitches: np.ndarray of bin_indices
+    intervals: list of (onset_index, offset_index)
+    velocities: list of velocity values
+    """
+    file = MidiFile()
+    track = MidiTrack()
+    file.tracks.append(track)
+    ticks_per_second = file.ticks_per_beat * 2.0
+
+    events = []
+    for i in range(len(pitches)):
+        events.append(dict(type='on', pitch=pitches[i], time=intervals[i][0], velocity=velocities[i]))
+        events.append(dict(type='off', pitch=pitches[i], time=intervals[i][1], velocity=velocities[i]))
+    events.sort(key=lambda row: row['time'])
+
+    last_tick = 0
+    for event in events:
+        current_tick = int(event['time'] * ticks_per_second)
+        velocity = int(event['velocity'] * 127)
+        if velocity > 127:
+            velocity = 127
+        pitch = int(round(hz_to_midi(event['pitch'])))
+        track.append(Message('note_' + event['type'], note=pitch, velocity=velocity, time=current_tick - last_tick))
+        last_tick = current_tick
+
+    file.save(path)
