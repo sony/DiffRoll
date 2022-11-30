@@ -140,6 +140,7 @@ class DiscreteDiffusion(pl.LightningModule):
     
         
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
+        
         roll_pred = noise_list[-1][0] # (B, 1, T, F)        
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
@@ -548,7 +549,15 @@ class DiscreteDiffusion(pl.LightningModule):
     
         log_x0_pred = torch.log_softmax(x0_pred, 1)
         
+#         torch.save(log_x0_pred, 'log_x0_pred.pt')
+#         torch.save(x, 'x.pt')
+#         torch.save(t_tensor, 't_tensor.pt')
         log_model_pred = self.posterior(log_x0_pred, x, t_tensor)
+        B, C, T, F = log_model_pred.shape
+    
+        log_model_pred = log_sample_categorical(log_model_pred).view(B,C,T,F)
+#         torch.save(log_model_pred, 'log_model_pred.pt')
+#         sys.exit()
         
         if torch.isnan(log_model_pred).sum()>0:
 #             torch.save(log_model_pred, 'log_model_pred.pt')
@@ -616,25 +625,12 @@ class DiscreteDiffusion(pl.LightningModule):
         # q(x{t-1}|xt, x0) = q(xt|x{t-1},x0)q(x{t-1}|x0) / q(xt|x0)
         #                  = q(xt|x{t-1})q(x{t-1}|x0) / q(xt|x0)
         
-        q = log_x0[:,:-1,:] - log_qt
+        q = log_x0 - log_qt
         q = torch.cat((q, log_zero_vector), dim=1)
         q_log_sum_exp = torch.logsumexp(q, dim=1, keepdim=True)
         q = q - q_log_sum_exp
-        if torch.isnan(q).sum()>0:
-            print(f"q has nan")
-            sys.exit()
-        
-        if torch.isnan(q_log_sum_exp).sum()>0:
-            print(f"q_log_sum_exp has nan")
-            sys.exit()        
-        log_EV_xtmin_given_xt_given_xstart = self.q_pred(q, t-1) + log_qt_one_timestep + q_log_sum_exp        # t-1 ??? even though t might be 0?????????
-        if torch.isnan(self.q_pred(q, t-1)).sum()>0:
-            print(f"self.q_pred(q, t-1) has nan")
-            sys.exit()                  
-        
-        if torch.isnan(log_EV_xtmin_given_xt_given_xstart).sum()>0:
-            print(f"log_EV_xtmin_given_xt_given_xstart has nan")
-            sys.exit()          
+      
+        log_EV_xtmin_given_xt_given_xstart = self.q_pred(q, t-1) + log_qt_one_timestep + q_log_sum_exp        # t-1 ??? even though t might be 0?????????       
         
         return torch.clamp(log_EV_xtmin_given_xt_given_xstart, log_eps, 0)
     
@@ -738,6 +734,11 @@ class DiscreteDiffusion(pl.LightningModule):
         log_ct = extract(self.log_ct, t, log_x_t.shape)             # ct
         log_1_min_ct = extract(self.log_1_min_ct, t, log_x_t.shape)          # 1-ct
         
+#         torch.save(self.log_at, 'log_at.pt')
+#         torch.save(self.log_bt, 'log_bt.pt')
+#         torch.save(self.log_ct, 'log_ct.pt')
+#         torch.save(self.log_1_min_ct, 'log_1_min_ct.pt')
+        
         if torch.isnan(self.log_1_min_ct).sum()>0:
             print(f"self.log_1_min_ct has nan")
             sys.exit()             
@@ -775,6 +776,10 @@ class DiscreteDiffusion(pl.LightningModule):
         return log_probs    
     
     def q_pred(self, log_x_start, t):           # q(xt|x0)
+#         torch.save(self.log_cumprod_at, 'log_cumprod_at.pt')
+#         torch.save(self.log_cumprod_bt, 'log_cumprod_bt.pt')
+#         torch.save(self.log_cumprod_ct, 'log_cumprod_ct.pt')
+#         torch.save(self.log_1_min_cumprod_ct, 'log_1_min_cumprod_ct.pt')
         # log_x_start: (B, classes+1, L)
         # same as t_steps in Sony's code
 
@@ -815,6 +820,7 @@ def roll_to_log_onehot(x, num_classes):
     x_onehot = x_onehot.permute(permute_order)
     log_x = torch.log(x_onehot.float().clamp(min=1e-30))
     return log_x
+
 
 def alpha_schedule(time_step, N=100, att_1 = 0.99999, att_T = 0.000009, ctt_1 = 0.000009, ctt_T = 0.99999):
     att = np.linspace(att_1, att_T, time_step)
