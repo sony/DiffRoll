@@ -141,7 +141,7 @@ class DiscreteDiffusion(pl.LightningModule):
         
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
         
-        roll_pred = noise_list[-1][0] # (B, 1, T, F)        
+        roll_pred = noise_list[-1][0] # (B, 3, T, F)        
         roll_label = batch["frame"].unsqueeze(1).cpu()
         
         if batch_idx==0:
@@ -151,14 +151,20 @@ class DiscreteDiffusion(pl.LightningModule):
                                   batch_idx)                
             for noise_npy, t_index in noise_list:
                 if (t_index+1)%10==0: 
-                    fig, ax = plt.subplots(2,2)
+                    fig01, ax01 = plt.subplots(2,2)
+                    fig02, ax02 = plt.subplots(2,2)
                     for idx, j in enumerate(noise_npy):
-                        # j (1, T, F)
-                        ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
+                        # j (3, T, F)
+                        ax01.flatten()[idx].imshow(j[1].T, aspect='auto', origin='lower')
                         self.logger.experiment.add_figure(
                             f"Test/pred",
-                            fig,
+                            fig01,
                             global_step=self.hparams.timesteps-t_index)
+                        ax02.flatten()[idx].imshow(j[2].T, aspect='auto', origin='lower')
+                        self.logger.experiment.add_figure(
+                            f"Test/mask",
+                            fig02,
+                            global_step=self.hparams.timesteps-t_index)                        
                         plt.close()
 
             fig1, ax1 = plt.subplots(2,2)
@@ -171,7 +177,7 @@ class DiscreteDiffusion(pl.LightningModule):
                     fig1,
                     global_step=0)
 
-                ax2.flatten()[idx].imshow((roll_pred[idx][0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
+                ax2.flatten()[idx].imshow((roll_pred[idx][1]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
                 self.logger.experiment.add_figure(
                     f"Test/pred_roll",
                     fig2,
@@ -204,14 +210,17 @@ class DiscreteDiffusion(pl.LightningModule):
             ani.save('algo2.gif', dpi=80, writer='imagemagick')
             #======== Animation saved ===========
             
+        
         frame_p, frame_r, frame_f1, _ = precision_recall_fscore_support(roll_label.flatten(),
                                                                         roll_pred[:,1].flatten()>self.hparams.frame_threshold, # extract only the note on probability
                                                                         average='binary')
         
+        torch.save(roll_pred, 'roll_pred.pt')
+        
         for sample_idx, (roll_pred_i, roll_label_i) in enumerate(zip(roll_pred, roll_label.numpy())):
             # roll_pred (B, 1, T, F)
-            p_est, i_est = extract_notes_wo_velocity(roll_pred_i[0],
-                                                     roll_pred_i[0],
+            p_est, i_est = extract_notes_wo_velocity(roll_pred_i[1],
+                                                     roll_pred_i[1],
                                                      onset_threshold=self.hparams.frame_threshold,
                                                      frame_threshold=self.hparams.frame_threshold,
                                                      rule='rule1'
@@ -278,7 +287,7 @@ class DiscreteDiffusion(pl.LightningModule):
             #======== Animation saved ===========      
             
         # noise_list is a list of tuple (pred_t, t), ..., (pred_0, 0)
-        roll_pred = noise_list[-1][0] # (B, 1, T, F)        
+        roll_pred = noise_list[-1][0] # (B, 3, T, F)        
 
         if batch_idx==0:
             self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
@@ -508,7 +517,7 @@ class DiscreteDiffusion(pl.LightningModule):
                 noise, spec = self.reverse_diffusion(noise, roll, t_index)
             else:
                 noise, spec = self.reverse_diffusion(noise, waveform, t_index)
-            noise_npy = noise.detach().cpu().numpy()
+            noise_npy = noise.exp().detach().cpu().numpy() # convert back to probability space
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
             noise_list.append((noise_npy, t_index))                       
