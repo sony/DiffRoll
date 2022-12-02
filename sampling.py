@@ -22,7 +22,10 @@ import warnings
 @hydra.main(config_path="config", config_name="sampling")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
-    cfg.dataset.args.audio_path = to_absolute_path(cfg.dataset.args.audio_path)
+    if cfg.dataset.name in ['Custom']:
+        cfg.dataset.args.audio_path = to_absolute_path(cfg.dataset.args.audio_path)
+    else:
+        cfg.dataset.args.root = to_absolute_path(cfg.dataset.args.root)
     S = cfg.dataset.num_samples # choose the number of samples to generate
     x = torch.randn(S, 1, 640, 88)    
     
