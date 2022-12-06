@@ -716,7 +716,7 @@ class DiscreteClassifierFreeDiffRoll(DiscreteDiffusion):
                  inpainting_t = None,
                  inpainting_f = None,
                  **kwargs):
-        self.spec_dropout = spec_dropout
+        self.save_hyperparameters()
         super().__init__(**kwargs)
         self.input_projection = Conv1d(3*88, residual_channels, 1)
         self.diffusion_embedding = DiffusionEmbedding(self.hparams.timesteps)
