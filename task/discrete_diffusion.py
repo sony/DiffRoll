@@ -263,23 +263,27 @@ class DiscreteDiffusion(pl.LightningModule):
         self.log("Test/Frame_F1", frame_f1)  
         
     def predict_step(self, batch, batch_idx):
-        noise = batch[0]
         waveform = batch[1]
         # if self.hparams.inpainting_f or self.hparams.inpainting_t:
         #     roll_label = batch[2]
         
-        device = noise.device
         # Algorithm 1 line 3: sample t uniformally for every example in the batch
         
         self.inner_loop.refresh()
         self.inner_loop.reset()
+        device = waveform.device
+        noise = torch.zeros_like(batch[0]) # (B, 1, T, F)
+        noise = noise.repeat(1,3,1,1).to(device) # (B, 3, T, F)
+        noise[:,:2] = math.log(1e-30)       
+        
+        
         
         noise_list = []
         noise_list.append((noise, self.hparams.timesteps))
 
         for t_index in reversed(range(0, self.hparams.timesteps)):
             noise, spec = self.reverse_diffusion(noise, waveform, t_index)
-            noise_npy = noise.detach().cpu().numpy()
+            noise_npy = noise.detach().cpu().exp().numpy()
                     # self.hparams.timesteps-i is used because slide bar won't show
                     # if global step starts from self.hparams.timesteps
             noise_list.append((noise_npy, t_index))                       
@@ -296,23 +300,30 @@ class DiscreteDiffusion(pl.LightningModule):
             for noise_npy, t_index in noise_list:
                 if (t_index+1)%10==0: 
                     fig, ax = plt.subplots(2,2)
+                    fig02, ax02 = plt.subplots(2,2)
                     for idx, j in enumerate(noise_npy):
                         if idx<4:
                             # j (1, T, F)
-                            ax.flatten()[idx].imshow(j[0].T, aspect='auto', origin='lower')
+                            ax.flatten()[idx].imshow(j[1].T, aspect='auto', origin='lower')
                             self.logger.experiment.add_figure(
                                 f"Test/pred",
                                 fig,
                                 global_step=self.hparams.timesteps-t_index)
                             plt.close()
+                            ax02.flatten()[idx].imshow(j[2].T, aspect='auto', origin='lower')
+                            self.logger.experiment.add_figure(
+                                f"Test/mask",
+                                fig02,
+                                global_step=self.hparams.timesteps-t_index)                        
+                            plt.close()                                  
                         else:
                             break
 
             fig1, ax1 = plt.subplots(2,2)
             fig2, ax2 = plt.subplots(2,2)
-            for idx, roll_pred_i in enumerate(roll_pred):
+            for idx, roll_pred_i in enumerate(roll_pred):          
                 
-                ax2.flatten()[idx].imshow((roll_pred_i[0]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
+                ax2.flatten()[idx].imshow((roll_pred_i[1]>self.hparams.frame_threshold).T, aspect='auto', origin='lower')
                 self.logger.experiment.add_figure(
                     f"Test/pred_roll",
                     fig2,
@@ -350,7 +361,7 @@ class DiscreteDiffusion(pl.LightningModule):
         # export as midi
         for roll_idx, np_frame in enumerate(noise_list[-1][0]):
             # np_frame = (1, T, 88)
-            np_frame = np_frame[0]
+            np_frame = np_frame[1]
             p_est, i_est = extract_notes_wo_velocity(np_frame, np_frame)
 
             scaling = HOP_LENGTH / SAMPLE_RATE
@@ -658,19 +669,16 @@ class DiscreteDiffusion(pl.LightningModule):
 #         x0_pred = x0_pred_c
         # x0_pred = x0_pred_0
 
-        if t_index == 0:
-            sigma = (1/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
-                torch.sqrt(1-self.alphas[t_index]))            
-            model_mean = x0_pred / self.sqrt_alphas_cumprod[t_index] 
-        else:
-            sigma = (self.sqrt_one_minus_alphas_cumprod[t_index-1]/self.sqrt_one_minus_alphas_cumprod[t_index]) * (
-                torch.sqrt(1-self.alphas[t_index]))                    
-            model_mean = (self.sqrt_alphas_cumprod[t_index-1]) * x0_pred + (
-                torch.sqrt(1 - self.sqrt_alphas_cumprod[t_index-1]**2 - sigma**2) * (
-                    x-self.sqrt_alphas_cumprod[t_index]* x0_pred)/self.sqrt_one_minus_alphas_cumprod[t_index]) + (
-                sigma * torch.randn_like(x))
-
-        return model_mean, _
+        log_x0_pred = torch.log_softmax(x0_pred, 1)
+        
+#         torch.save(log_x0_pred, 'log_x0_pred.pt')
+#         torch.save(x, 'x.pt')
+#         torch.save(t_tensor, 't_tensor.pt')
+        log_model_pred = self.posterior(log_x0_pred, x, t_tensor)
+        B, C, T, F = log_model_pred.shape
+    
+        log_model_pred = log_sample_categorical(log_model_pred).view(B,C,T,F)
+        return log_model_pred, _
     
     def inpainting_ddpm_x0(self, x, waveform, t_index):
         # x is x_t, when t=T it is pure Gaussian
@@ -724,13 +732,13 @@ class DiscreteDiffusion(pl.LightningModule):
             caxs[4+idx].cla()     
 
             # roll_pred (1, T, F)
-            im1 = ax_flat[idx].imshow(noise_list[0][0][idx][0].detach().T.cpu(), aspect='auto', origin='lower')
-            im2 = ax_flat[4+idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][0].T, aspect='auto', origin='lower')
+            im1 = ax_flat[idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][2].T, aspect='auto', origin='lower', vmin=0, vmax=1)
+            im2 = ax_flat[4+idx].imshow(noise_list[1+self.hparams.timesteps-t_idx][0][idx][1].T, aspect='auto', origin='lower', vmin=0, vmax=1)
             fig.colorbar(im1, cax=caxs[idx])
             fig.colorbar(im2, cax=caxs[4+idx])
 
         fig.suptitle(f't={t_idx}')
-        row1_txt = ax_flat[0].text(-400,45,f'Gaussian N(0,1)')
+        row1_txt = ax_flat[0].text(-300,45,f'mask')
         row2_txt = ax_flat[4].text(-300,45,'x_{t-1}')
         
     def q_sample(self, log_x_start, t): # diffusion step, q(xt|x0) and sample xt
