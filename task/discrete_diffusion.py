@@ -43,7 +43,7 @@ class DiscreteDiffusion(pl.LightningModule):
                 ):
         super().__init__()
         
-#         self.save_hyperparameters()
+        self.save_hyperparameters()
         
         # define beta schedule
         # beta is variance
