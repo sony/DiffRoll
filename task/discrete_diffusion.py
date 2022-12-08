@@ -30,6 +30,7 @@ import sys
 
 class DiscreteDiffusion(pl.LightningModule):
     def __init__(self,
+                 scheduler_name,
                  lr,
                  timesteps,
                  loss_type,
@@ -47,18 +48,24 @@ class DiscreteDiffusion(pl.LightningModule):
         
         # define beta schedule
         # beta is variance
-        at, bt, ct, att, btt, ctt = alpha_schedule(
+        at, bt, ct, att, btt, ctt = getattr(self, scheduler_name)(
             time_step=self.hparams.timesteps,
             N=2,
             **schedule_args
         )
+
+#         at, bt, ct, att, btt, ctt = self.alpha_schedule(
+#             time_step=self.hparams.timesteps,
+#             N=2,
+#             **schedule_args
+#         )
         
-        self.register_buffer('at', torch.tensor(at).float())
-        self.register_buffer('bt', torch.tensor(bt).float())
-        self.register_buffer('ct', torch.tensor(ct).float())
-        self.register_buffer('att', torch.tensor(att).float())
-        self.register_buffer('btt', torch.tensor(btt).float())
-        self.register_buffer('ctt', torch.tensor(ctt).float())
+        self.register_buffer('at', at)
+        self.register_buffer('bt', bt)
+        self.register_buffer('ct', ct)
+        self.register_buffer('att', att)
+        self.register_buffer('btt', btt)
+        self.register_buffer('ctt', ctt)
         
         self.register_buffer('log_at', torch.log(self.at))
         self.register_buffer('log_bt', torch.log(self.bt))
@@ -78,7 +85,40 @@ class DiscreteDiffusion(pl.LightningModule):
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self.inner_loop = tqdm(range(self.hparams.timesteps), desc='sampling loop time step')
         
-        self.reverse_diffusion = getattr(self, sampling.type)   
+        self.reverse_diffusion = getattr(self, sampling.type)
+        
+    def alpha_schedule(self, time_step, N=100, att_1 = 0.99999, att_T = 0.000009, ctt_1 = 0.000009, ctt_T = 0.99999):
+        att = torch.linspace(att_1, att_T, time_step)
+        ctt = torch.linspace(ctt_1, ctt_T, time_step)
+
+        att = torch.cat((torch.tensor([1]), att))
+        at = att[1:]/att[:-1]
+
+        ctt = torch.cat((torch.tensor([0]), ctt))
+        one_minus_ctt = 1 - ctt
+        one_minus_ct = one_minus_ctt[1:] / one_minus_ctt[:-1]
+        ct = 1-one_minus_ct
+        bt = (1-at-ct)/N
+        att = torch.cat((att[1:], torch.tensor([1])))
+        ctt = torch.cat((ctt[1:], torch.tensor([0])))
+        btt = (1-att-ctt)/N
+        return at, bt, ct, att, btt, ctt
+
+    def alpha_schedule_new(self,time_step, N=100, order=8, at_1 = 0.99999, ctt_1 = 0.000009, ctt_T = 0.99999):
+        at = at_1*(1-torch.linspace(0, 1, 200)**order)
+        att = at.cumprod(0)
+        ctt = torch.linspace(ctt_1, ctt_T, time_step)
+
+        att = torch.cat((torch.tensor([1]), att))
+        ctt = torch.cat((torch.tensor([0]), ctt))
+        one_minus_ctt = 1 - ctt
+        one_minus_ct = one_minus_ctt[1:] / one_minus_ctt[:-1]
+        ct = 1-one_minus_ct
+        bt = (1-(at+ct))/N
+        att = torch.cat((att[1:], torch.tensor([1])))
+        ctt = torch.cat((ctt[1:], torch.tensor([0])))
+        btt = (1-(att+ctt))/N
+        return at, bt, ct, att, btt, ctt        
 
     def training_step(self, batch, batch_idx):
         losses, tensors = self.step(batch)
@@ -840,22 +880,7 @@ def roll_to_log_onehot(x, num_classes):
     return log_x
 
 
-def alpha_schedule(time_step, N=100, att_1 = 0.99999, att_T = 0.000009, ctt_1 = 0.000009, ctt_T = 0.99999):
-    att = np.linspace(att_1, att_T, time_step)
-    ctt = np.linspace(ctt_1, ctt_T, time_step)
 
-    att = np.concatenate(([1], att))
-    at = att[1:]/att[:-1]
-
-    ctt = np.concatenate(([0], ctt))
-    one_minus_ctt = 1 - ctt
-    one_minus_ct = one_minus_ctt[1:] / one_minus_ctt[:-1]
-    ct = 1-one_minus_ct
-    bt = (1-at-ct)/N
-    att = np.concatenate((att[1:], [1]))
-    ctt = np.concatenate((ctt[1:], [0]))
-    btt = (1-att-ctt)/N
-    return at, bt, ct, att, btt, ctt
     
     
 def log_1_min_a(a):

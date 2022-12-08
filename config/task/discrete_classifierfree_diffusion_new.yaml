@@ -1,4 +1,4 @@
-scheduler_name: 'alpha_schedule'
+scheduler_name: 'alpha_schedule_new'
 lr: ${learning_rate}
 timesteps: 200
 loss_type: 'kl'
@@ -6,8 +6,8 @@ loss_keys:
     - 'diffusion_loss'
 frame_threshold: 0.5
 schedule_args:
-    att_1: 0.99999
-    att_T: 0.000009 # 0.000009
+    order: 100
+    at_1: .97
     ctt_1: 0.000009
     ctt_T: 0.99999
 training:
