@@ -59,6 +59,8 @@ class DiscreteDiffusion(pl.LightningModule):
 #             N=2,
 #             **schedule_args
 #         )
+
+        assert ((bt<0).sum())==0, f'bt contains nan. Current order={schedule_args.order} might be too high, please tune the value down'
         
         self.register_buffer('at', at)
         self.register_buffer('bt', bt)
@@ -803,7 +805,7 @@ class DiscreteDiffusion(pl.LightningModule):
 
         
         if torch.isnan(log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt)).sum()>0:
-            print(f"log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt) has nan")
+            print(f" L806 log_add_exp(log_x_t[:,:-1,:]+log_at, log_bt) has nan")
             sys.exit()
             
         if torch.isnan(log_1_min_ct).sum()>0:

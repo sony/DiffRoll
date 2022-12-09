@@ -6,8 +6,8 @@ loss_keys:
     - 'diffusion_loss'
 frame_threshold: 0.5
 schedule_args:
-    order: 100
-    at_1: .97
+    order: 15
+    at_1: .96
     ctt_1: 0.000009
     ctt_T: 0.99999
 training:
