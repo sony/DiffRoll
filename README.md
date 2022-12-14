@@ -100,6 +100,21 @@ python continue_train_single.py gpus=[0] model.args.kernel_size=9 model.args.spe
 - `pretrained_path` specifies the location of pretrained weights obtained in [Step 1](#step-1-pretraining-on-maestro-using-only-piano-rolls)
 - other arguments are same as [Supervised Training](#supervised-training).
 
+## Discrete Diffusion
+
+To train a model with discrete diffusion, use the following command:
+
+```
+python train_spec_roll.py gpus=[0] model=DiscreteClassifierFreeDiffRoll task=discrete_classifierfree_diffusion_new model.args.kernel_size=9 model.args.spec_dropout=1 dataset=MAESTRO dataloader.train.num_workers=4 epochs=2500
+```
+
+Currently, the result is around this, need to improve the model.
+
+```
+Test/Frame_F1         0.6624256703879823
+Test/Note_F1          0.37289154529571533
+```
+
 # Testing
 The training script above already includes the testing. This section is for you to re-run the test set and get the transcription score.
 

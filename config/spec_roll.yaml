@@ -49,6 +49,6 @@ modelcheckpoint:
 
 defaults:
     - spec: mel
-    - model: DiscreteClassifierFreeDiffRoll
-    - task: discrete_classifierfree_diffusion
+    - model: ClassifierFreeDiffRoll
+    - task: classifierfree_diffusion
     - dataset: MAESTRO
