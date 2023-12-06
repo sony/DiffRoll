@@ -18,12 +18,12 @@ import AudioLoader.music.amt as MusicDataset
 @hydra.main(config_path="config", config_name="test")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
+    cfg.data_root = '/mnt/sdd/solee/dl_project_dataset/'
 
 #     test_set = MAESTRO(**cfg.dataset.test)
     test_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.test)
-        
+
     test_loader = DataLoader(test_set, batch_size=4)
-    
 
     # Model
     if cfg.task.frame_threshold!=None and cfg.task.sampling.type!=None:

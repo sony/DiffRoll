@@ -321,7 +321,7 @@ class SpecRollDiffusion(pl.LightningModule):
             torch.save(spec, 'spec.pt')
             self.visualize_figure(spec.transpose(-1,-2).unsqueeze(1),
                                   'Test/spec',
-                                  batch_idx)                
+                                  batch_idx)
             for noise_npy, t_index in noise_list:
                 if (t_index+1)%10==0: 
                     fig, ax = plt.subplots(2,2)
@@ -390,14 +390,14 @@ class SpecRollDiffusion(pl.LightningModule):
                                                      frame_threshold=self.hparams.frame_threshold,
                                                      rule='rule1'
                                                     )
-            
+
             p_ref, i_ref = extract_notes_wo_velocity(roll_label_i[0],
                                                      roll_label_i[0],
                                                      onset_threshold=self.hparams.frame_threshold,
                                                      frame_threshold=self.hparams.frame_threshold,
                                                      rule='rule1'
-                                                    )            
-            
+                                                    )
+
             scaling = self.hparams.spec_args.hop_length / self.hparams.spec_args.sample_rate
             # scaling = HOP_LENGTH / SAMPLE_RATE
 
@@ -616,7 +616,7 @@ class SpecRollDiffusion(pl.LightningModule):
                       p_est,
                       i_est,
                       [127]*len(p_est))
-            
+
 #         # uncomment this part if you want to save ground truth midi
 #         for roll_idx, np_frame in enumerate(roll_label.unsqueeze(1).cpu().numpy()):
 #             # np_frame = (1, T, 88)
@@ -644,6 +644,8 @@ class SpecRollDiffusion(pl.LightningModule):
         fig, ax = plt.subplots(2,2)
         for idx, tensor in enumerate(tensors): # visualize only 4 piano rolls
             # roll_pred (1, T, F)
+            if idx >=4:
+                break
             ax.flatten()[idx].imshow(tensor[0].T.cpu(), aspect='auto', origin='lower')
         self.logger.experiment.add_figure(f"{tag}", fig, global_step=self.current_epoch)
         plt.close()
@@ -659,8 +661,8 @@ class SpecRollDiffusion(pl.LightningModule):
             waveform2 = batch[1]["audio"]
             device = roll.device            
         else:
-            batch_size = batch["frame"].shape[0]
-            roll = self.normalize(batch["frame"]).unsqueeze(1) 
+            batch_size = batch["velocity"].shape[0]
+            roll = batch["velocity"].unsqueeze(1) 
             waveform = batch["audio"]
             device = roll.device
         

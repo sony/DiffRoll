@@ -22,6 +22,8 @@ import warnings
 @hydra.main(config_path="config", config_name="sampling")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
+    cfg.data_root = '/mnt/sdd/solee/dl_project_dataset/'
+
     cfg.dataset.args.audio_path = to_absolute_path(cfg.dataset.args.audio_path)
     S = cfg.dataset.num_samples # choose the number of samples to generate
     x = torch.randn(S, 1, 640, 88)    

@@ -3,7 +3,7 @@ hop_length: 512
 sequence_length: 327680
 sampling_rate: 16000
 data_root: './dataset'
-checkpoint_path: 'weights/Pretrain_MAESTRO-retrain_Both-k=9.ckpt' # will be ignored in train.py
+checkpoint_path: 'weights/last.ckpt' # will be ignored in train.py
 
 # e_x0 './outputs/2022-08-19/13-10-56/DiffRoll-ddim-L15-C512-beta0.02-ex_0-dilation1-huber-MAESTRO/version_1/checkpoints/last.ckpt'
         
@@ -15,7 +15,7 @@ dataloader:
         pin_memory: True
         
 task:
-    frame_threshold: 0.5
+    frame_threshold: 0.1
     sampling:
         type: 'cfdg_ddpm_x0'
         w: 0.5 # 0.1 0.5 1

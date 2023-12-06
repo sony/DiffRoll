@@ -16,7 +16,8 @@ import AudioLoader.music.amt as MusicDataset
 @hydra.main(config_path="config", config_name="spec_roll")
 def main(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
-    
+    cfg.data_root = '/mnt/sdd/solee/dl_project_dataset/'
+
     train_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.train)
     val_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.val)
     test_set = getattr(MusicDataset, cfg.dataset.name)(**cfg.dataset.test)
